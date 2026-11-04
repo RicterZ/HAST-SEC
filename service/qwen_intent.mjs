@@ -4,12 +4,16 @@ import {qwenProcess} from './qwen_process.mjs';
 import {qwenRequests} from './qwen_requests.mjs';
 import {bodyContract} from './qwen_parts.mjs';
 import {readDialogue} from './qwen_dialogue.mjs';
-export function qwenIntent(root,classes){
- const process=qwenProcess(root),endpoint=process.endpoint;
- const contract=qwenContract(classes),requests=qwenRequests(endpoint,contract),extended=qwenRequests(endpoint,bodyContract(contract));
+import {deepseek} from './deepseek.mjs';
+export function qwenIntent(root,classes,options={}){
+ const provider=(options.env??globalThis.process.env).HAST_LLM_PROVIDER??'qwen';
+ if(!['qwen','deepseek'].includes(provider))throw Error('HAST_LLM_PROVIDER 仅支持 qwen 或 deepseek.');
+ const remote=provider==='deepseek'?deepseek(options):null;
+ const process=remote??qwenProcess(root),endpoint=process.endpoint;
+ const contract=qwenContract(classes),requests=qwenRequests(endpoint,contract,remote),extended=qwenRequests(endpoint,bodyContract(contract),remote);
  let idle=null,busy=false,owner=null,primed=false,controller=null,settled=null,finish=null,kind=null,closing=false;
  const begin=(session,type='plan')=>{busy=true;owner=session;kind=type;clearTimeout(idle);controller=new AbortController();settled=new Promise(resolve=>finish=resolve);return controller.signal;};
- const state=()=>({...process.state(),busy});
+ const state=()=>({provider,model:remote?.model??'Qwen3.5-0.8B-Q8_0',...process.state(),busy});
  const stop=async()=>{clearTimeout(idle);primed=false;await process.stop();};
  const cool=async()=>{const c=await process.settings;busy=false;owner=null;controller=null;if(!closing)idle=setTimeout(()=>{void stop();},c.idle_seconds*1000);finish?.();finish=null;settled=null;};
  const punctuation={'，':',','。':'.','？':'?','！':'!','：':':','；':';'},normalize=value=>value?.replace(/[，。？！：；]/g,c=>punctuation[c]);
@@ -36,7 +40,7 @@ export function qwenIntent(root,classes){
    if(result.operation==='command')result.reply=generation==='v15'?'':confirmation?'将执行: '+confirmation+'.':'将调整底座: '+result.base.name+'.';
    if(result.operation==='unsupported'){result.operation='chat';result.supported=false;result.reply='这个动作还没有学会, 没有执行.';}
    result.reply=normalize(result.reply);
-   return {...result,seconds:(performance.now()-started)/1000,usage:raw.usage,model:'Qwen3.5-0.8B-Q8_0',timings:raw.timings,load_seconds:loadSeconds};
+   return {...result,seconds:(performance.now()-started)/1000,usage:raw.usage,provider,model:state().model,timings:raw.timings,load_seconds:loadSeconds};
   }catch(e){if(!signal.aborted)await stop();throw e;}finally{await cool();}
  }};
 }

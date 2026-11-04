@@ -169,6 +169,33 @@ npm start
 
 在其他设备打开 `http://<运行电脑的局域网 IP>:8769/language-lab`；`0.0.0.0` 是监听地址，不能作为其他设备访问的目标地址。端口仍可通过 `PORT` 设置，也可将 `HOST` 设为某个具体的本机 IP。恢复默认时取消设置 `HOST`。
 
-允许的 Host 包括本机地址；通配监听时还包括启动时检测到的网卡 IP。同源检查仍启用，不允许任意域名或跨站页面调用 API；网络地址变化后需重启服务。不提供登录认证，因此请仅在可信局域网开放，勿直接暴露到公网。语言推理服务继续使用原有的本机配置。
+允许的 Host 包括本机地址；通配监听时还包括启动时检测到的网卡 IP。同源检查仍启用，不允许任意域名或跨站页面调用 API；网络地址变化后需重启服务。不提供登录认证，因此请仅在可信局域网开放，勿直接暴露到公网。语言推理使用服务端选择的后端。
 
 局域网 HTTP 地址不属于浏览器安全上下文，通常没有 `crypto.subtle` 和 `crypto.randomUUID`。前端已提供 SHA-256 校验的 JavaScript 回退，并使用 HTTP 下仍可用的 `crypto.getRandomValues` 生成会话 UUID；不会跳过模型或技能资源摘要校验。localhost/HTTPS 下仍优先使用原生 Web Crypto。若旧版本通过 IP 打开后只显示空白角色区域，请更新代码、重启服务并强制刷新页面，无需关闭浏览器安全设置。
+
+## DeepSeek 文字理解与对话
+
+默认仍使用本地 Qwen3.5-0.8B。要改为 DeepSeek API，在启动服务的终端设置环境变量：
+
+```sh
+export HAST_LLM_PROVIDER=deepseek
+export DEEPSEEK_API_KEY='你的 API Key'
+# 可选，默认 deepseek-flash
+export DEEPSEEK_MODEL=deepseek-flash
+npm start
+```
+
+PowerShell：
+
+```powershell
+$env:HAST_LLM_PROVIDER='deepseek'
+$env:DEEPSEEK_API_KEY='你的 API Key'
+$env:DEEPSEEK_MODEL='deepseek-flash'
+npm start
+```
+
+可同时设置 `HOST=0.0.0.0` 供局域网访问。修改变量后重启服务。密钥只由 Node 服务端读取，不放进网页、模型 profile 或提交到仓库。服务端请求官方 `https://api.deepseek.com/chat/completions`，发送当前文字、最近对话和动作能力提示；按 DeepSeek 的 API 规则计费。预热只检查配置，不发送付费请求，页面显示「已配置」不代表已验证密钥或网络。
+
+API 模式不启动 llama-server，也不需要本地 Qwen GGUF；角色、动作模型和其他项目资源仍需保留。文字理解、聊天与主动对话都使用所选后端，角色 profile 和动作播放方式不变。API 返回 JSON 后先校验结构，再经过原有动作接口检查；失败、超时或取消时不执行新动作，也不自动切回本地模型。
+
+恢复本地模式：将 `HAST_LLM_PROVIDER` 设为 `qwen`（或取消该变量）后重启，使用原有 `configs/qwen_intent.json` 配置。`DEEPSEEK_MODEL` 可用于指定账户支持的其他 DeepSeek 聊天模型。请求显式关闭思考模式，避免短动作解析消耗长推理预算；使用 [JSON Output](https://api-docs.deepseek.com/guides/json_mode) 和 [thinking 参数](https://api-docs.deepseek.com/guides/thinking_mode) 的官方接口。
