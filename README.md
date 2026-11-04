@@ -103,6 +103,20 @@ npm run avatar -- "D:\角色\自己的角色.vrm"
 
 角色文件应在100MB以内, 包含完整人形、眼睛和手指骨骼. 导入后刷新页面; 只替换本机角色, 自有角色不会加入发布清单. 表情按角色实际支持的通道显示, 不同角色的形态和动作幅度可能不同.
 
+### 用 profile 适配其他骨骼模型
+
+不加 `--profile` 时导入流程和运行效果与官方完全一致. 非 VRM 的骨骼模型 (GLB) 或需要定制效果的 VRM, 可以写一份 JSON profile 后导入:
+
+```powershell
+npm run avatar -- "D:\角色\CH0069.glb" --profile configs/model_profiles/kivo.json
+```
+
+- `conversion` 只在导入 GLB 时使用: `humanBones` 把 HAST 骨骼名映射到模型节点名, `virtualBones` 为缺失的手指等骨骼补零长度子节点, `scale` 把模型单位换成米, `tPoseArms` 把 A-pose 手臂校准为 VRM 要求的 T-pose, `hideMeshes` 按节点名正则隐藏道具, `mouth` 可把与眼睛共用材质的嘴部拆出并使用外部嘴型贴图, `meta` 写入 VRM 元数据 (`{model}` 替换为文件名).
+- `runtime` 嵌入导入后的角色并在页面中生效: `material` (`original`/`toon`), `lighting` (背景色、环境光、跟随相机的主光), `attachments` (把独立节点挂到人形骨骼上, 如光环跟随头部), `armCollision` (是否启用手臂碰撞), `armPose` (手臂比例与训练骨架差异大时, 按动作名正则把手臂动作映射为手部目标点, 以肩为原点、手臂长度为单位).
+- `extends` 可继承另一份 profile, 对象逐层合并, 数组整体替换. VRM 输入只嵌入 `runtime`, 不做转换.
+
+`configs/model_profiles/kivo.json` 适用于 KivoWiki 的蔚蓝档案 3D 角色 (Bip001 骨架), 已用圣园未花、才羽桃井、白洲梓、栗村爱莉验证; `configs/model_profiles/examples/kivo-mika.json` 演示在其基础上为单个角色换背景和挥手幅度. profile 只描述适配方式, 不授予模型的任何使用权利, 请遵守原始许可. `npm test` 检查 profile 解析与转换.
+
 ## 检查与常见问题
 
 安装后可检查源码语法、本地依赖路径与配套运动资源:

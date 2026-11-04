@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "id": "kivo",
+  "description": "KivoWiki (蔚蓝档案) 3D 角色 GLB: 3ds Max Bip001 骨架, Q 版比例, 光环独立于头骨.",
+  "conversion": {
+    "format": "glb-humanoid",
+    "scale": 160,
+    "tPoseArms": true,
+    "humanBones": {
+      "hips": "Bip001 Pelvis",
+      "spine": "Bip001 Spine",
+      "chest": "Bip001 Spine1",
+      "neck": "Bip001 Neck",
+      "head": "Bip001 Head",
+      "leftEye": "Bip001 Xtra_eyeL",
+      "rightEye": "Bip001 Xtra_eyeR",
+      "leftShoulder": "Bip001 L Clavicle",
+      "leftUpperArm": "Bip001 L UpperArm",
+      "leftLowerArm": "Bip001 L Forearm",
+      "leftHand": "Bip001 L Hand",
+      "leftUpperLeg": "Bip001 L Thigh",
+      "leftLowerLeg": "Bip001 L Calf",
+      "leftFoot": "Bip001 L Foot",
+      "leftToes": "Bip001 L Toe0",
+      "leftThumbMetacarpal": "Bip001 L Finger0",
+      "leftThumbProximal": "Bip001 L Finger01",
+      "leftIndexProximal": "Bip001 L Finger1",
+      "leftIndexIntermediate": "Bip001 L Finger11",
+      "leftMiddleProximal": "Bip001 L Finger2",
+      "leftMiddleIntermediate": "Bip001 L Finger21",
+      "rightShoulder": "Bip001 R Clavicle",
+      "rightUpperArm": "Bip001 R UpperArm",
+      "rightLowerArm": "Bip001 R Forearm",
+      "rightHand": "Bip001 R Hand",
+      "rightUpperLeg": "Bip001 R Thigh",
+      "rightLowerLeg": "Bip001 R Calf",
+      "rightFoot": "Bip001 R Foot",
+      "rightToes": "Bip001 R Toe0",
+      "rightThumbMetacarpal": "Bip001 R Finger0",
+      "rightThumbProximal": "Bip001 R Finger01",
+      "rightIndexProximal": "Bip001 R Finger1",
+      "rightIndexIntermediate": "Bip001 R Finger11",
+      "rightMiddleProximal": "Bip001 R Finger2",
+      "rightMiddleIntermediate": "Bip001 R Finger21"
+    },
+    "virtualBones": {
+      "leftThumbDistal": "leftThumbProximal",
+      "leftIndexDistal": "leftIndexIntermediate",
+      "leftMiddleDistal": "leftMiddleIntermediate",
+      "leftRingProximal": "leftHand",
+      "leftRingIntermediate": "leftRingProximal",
+      "leftRingDistal": "leftRingIntermediate",
+      "leftLittleProximal": "leftHand",
+      "leftLittleIntermediate": "leftLittleProximal",
+      "leftLittleDistal": "leftLittleIntermediate",
+      "rightThumbDistal": "rightThumbProximal",
+      "rightIndexDistal": "rightIndexIntermediate",
+      "rightMiddleDistal": "rightMiddleIntermediate",
+      "rightRingProximal": "rightHand",
+      "rightRingIntermediate": "rightRingProximal",
+      "rightRingDistal": "rightRingIntermediate",
+      "rightLittleProximal": "rightHand",
+      "rightLittleIntermediate": "rightLittleProximal",
+      "rightLittleDistal": "rightLittleIntermediate"
+    },
+    "hideMeshes": [
+      "^(?!.*_(Body|Halo)$)"
+    ],
+    "mouth": {
+      "material": "_EyeMouth$",
+      "tolerance": 0.00016,
+      "axis": 1,
+      "pick": "min",
+      "atlas": {
+        "url": "https://kivo.wiki/assets/Character_Mouth_High-BgFqI_9W.png",
+        "sha256": "ff48cd75c186d6b344e1b63ef8e13b3c82122d859373e5c4a94ce781fb75c8f7",
+        "offset": [
+          0.5,
+          0.875
+        ],
+        "scale": [
+          0.5,
+          0.5
+        ]
+      }
+    },
+    "meta": {
+      "name": "{model} (HAST 本机适配)",
+      "version": "local",
+      "authors": [
+        "原始模型: KivoWiki / NijiNeko; 角色权利归原权利方"
+      ],
+      "copyrightInformation": "原始权利保留. 本适配不授予任何模型权利.",
+      "otherLicenseUrl": "https://kivo.wiki/",
+      "avatarPermission": "onlyAuthor",
+      "allowExcessivelyViolentUsage": false,
+      "allowExcessivelySexualUsage": false,
+      "commercialUsage": "personalNonProfit",
+      "allowPoliticalOrReligiousUsage": false,
+      "allowAntisocialOrHateUsage": false,
+      "creditNotation": "required",
+      "allowRedistribution": false,
+      "modification": "prohibited"
+    }
+  },
+  "runtime": {
+    "material": "toon",
+    "lighting": {
+      "background": "#5d5e60",
+      "ambient": 2.827433388230814,
+      "key": 0.15
+    },
+    "attachments": [
+      {
+        "node": "HaloRoot",
+        "bone": "head"
+      }
+    ],
+    "armCollision": false,
+    "armPose": {
+      "rest": [
+        0.22,
+        -0.88,
+        0.12
+      ],
+      "pole": [
+        0.7,
+        -0.35,
+        0.12
+      ],
+      "speed": 0.65,
+      "maxElbowDegrees": 150,
+      "poses": [
+        {
+          "match": "挥手|摆动",
+          "target": [
+            0.6,
+            0.55,
+            0.3
+          ],
+          "wave": {
+            "amplitude": 0.1,
+            "frequency": 7
+          }
+        },
+        {
+          "match": "举过|头部高度|向上",
+          "target": [
+            0.28,
+            0.9,
+            0.2
+          ]
+        },
+        {
+          "match": "向前",
+          "target": [
+            0.2,
+            -0.15,
+            0.9
+          ]
+        },
+        {
+          "match": "向后",
+          "target": [
+            0.35,
+            -0.65,
+            -0.25
+          ]
+        },
+        {
+          "match": "向左|向右",
+          "target": [
+            0.85,
+            -0.2,
+            0.25
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -18,6 +18,7 @@ export function createViewer(container,{wheelZoom=true}={}) {
   controls.enableZoom=Boolean(wheelZoom);
   controls.minDistance=.3;controls.maxDistance=9;
   const axes=new THREE.AxesHelper(.16);axes.material.depthTest=false;axes.renderOrder=10;scene.add(axes);
+  let keyLight=null;
   let vrm,profile,graph,selected="head",lines,radius=3,pendingBox=null;
   const vector=new THREE.Vector3(),fullTarget=new THREE.Vector3();
   const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI);
@@ -39,6 +40,7 @@ export function createViewer(container,{wheelZoom=true}={}) {
         lines.geometry.computeBoundingSphere();
       }
     }
+    keyLight?.position.copy(camera.position);
     renderer.render(scene, camera);
   }
   function view(side = "front") {
@@ -69,6 +71,12 @@ export function createViewer(container,{wheelZoom=true}={}) {
     inspect(){return {target:controls.target.toArray(),camera:camera.position.toArray(),full_target:fullTarget.toArray(),head_screen:vrm?vrm.humanoid.getNormalizedBoneNode("head").getWorldPosition(new THREE.Vector3()).project(camera).toArray():null,wheel_zoom:controls.enableZoom};},
     attach(model, skeleton, binding) {
       vrm = model; profile = skeleton; graph = binding; scene.add(vrm.scene);
+      const lighting=vrm.modelProfile?.runtime.lighting;
+      if(lighting){
+        scene.background=new THREE.Color(lighting.background);
+        for(const object of [...scene.children])if(object.isLight)scene.remove(object);
+        keyLight=new THREE.DirectionalLight(0xffffff,lighting.key);scene.add(keyLight,new THREE.AmbientLight(0xffffff,lighting.ambient));
+      }
       const box = new THREE.Box3().setFromObject(vrm.scene);
       lines = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({color:0x197e9d,depthTest:false}));
       const segments=Object.values(graph.bone_parents).filter(Boolean).length;

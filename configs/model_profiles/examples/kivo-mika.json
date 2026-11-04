@@ -1,0 +1,61 @@
+{
+  "extends": "../kivo.json",
+  "version": 1,
+  "id": "kivo-mika",
+  "description": "示例: 在 Kivo 通用 profile 上为圣园未花 (CH0069) 换浅色背景并放大挥手.",
+  "runtime": {
+    "lighting": {
+      "background": "#d9e4ef",
+      "ambient": 2.6,
+      "key": 0.35
+    },
+    "armPose": {
+      "poses": [
+        {
+          "match": "挥手|摆动",
+          "target": [
+            0.62,
+            0.6,
+            0.3
+          ],
+          "wave": {
+            "amplitude": 0.18,
+            "frequency": 6
+          }
+        },
+        {
+          "match": "举过|头部高度|向上",
+          "target": [
+            0.28,
+            0.9,
+            0.2
+          ]
+        },
+        {
+          "match": "向前",
+          "target": [
+            0.2,
+            -0.15,
+            0.9
+          ]
+        },
+        {
+          "match": "向后",
+          "target": [
+            0.35,
+            -0.65,
+            -0.25
+          ]
+        },
+        {
+          "match": "向左|向右",
+          "target": [
+            0.85,
+            -0.2,
+            0.25
+          ]
+        }
+      ]
+    }
+  }
+}

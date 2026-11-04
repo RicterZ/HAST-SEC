@@ -24,7 +24,7 @@ function pause(){playing=false;last=0;cancelAnimationFrame(raf);raf=null;command
 function step(dt){
  seconds+=dt;behavior.lock(layers.active());const row=behavior.sample(dt),frame=beatFrame(row.values,data.motion.meta);
  basePose=frame.rotations;raw=layers.sample(basePose,dt);frame.rotations=raw;frame.rootObserved=false;const leg=layers.state().tracks.find(t=>t.part==='leg'&&t.weight>.1);frame.swingFoot=leg?leg.side+'Foot':null;
- const result=view.render(frame,data.motion.meta,dt,false);dialogue?.step(dt);
+ frame.armTracks=layers.state().tracks;const result=view.render(frame,data.motion.meta,dt,false);dialogue?.step(dt);
  const canonical=result.rotations.map(q=>q.map((v,i)=>i===0||i===2?v*view.direction:v));history.push(canonical);if(history.length>20)history.shift();
  if(result.last.requires_pause)throw Error('姿态求解失败, 已暂停.');return result;
 }
