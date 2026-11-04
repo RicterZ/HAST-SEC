@@ -88,3 +88,20 @@ test("随附的 Kivo 通用 profile 和示例均有效",async()=>{
   for(const name of ["CH0069_Weapon","CH0069_Weapon001","Momoi_Original_GamePad","Airi_Original_Icecream_01"])assert.ok(hide.test(name),name);
   for(const name of ["CH0069_Body","Azusa_Original_Halo"])assert.ok(!hide.test(name),name);
 });
+
+test("嘴型图集按规则顺序切换格子",()=>{
+  const map={offset:{set(u,v){this.u=u;this.v=v;}}},values={},registered=new Map();
+  const mesh={isMesh:true,material:{name:"mouth",map}};
+  const manager={getExpression:n=>registered.get(n),registerExpression:e=>registered.set(e.expressionName,e),getValue:n=>values[n]??0,update(){}};
+  const vrm={scene:{traverse:f=>f(mesh)},expressionManager:manager};
+  const mouthAtlas={material:"mouth",grid:[8,8],origin:[0,-.375],neutral:[0,2],rules:[{name:"aa",min:.2,cell:[1,3]},{name:"aa",min:.05,cell:[1,1]},{name:"happy",min:.3,cell:[0,3]}]};
+  applyModelProfile(vrm,{id:"t",runtime:validateModelProfile({version:1,id:"t",runtime:{mouthAtlas}}).runtime});
+  const cell=()=>[map.offset.u*8,(map.offset.v+.375)*8];
+  assert.deepEqual([...registered.keys()],["aa","happy"]);
+  assert.deepEqual(cell(),[0,2]);
+  Object.assign(values,{aa:.1,happy:.9});manager.update();assert.deepEqual(cell(),[1,1]);
+  Object.assign(values,{aa:.3});manager.update();assert.deepEqual(cell(),[1,3]);
+  Object.assign(values,{aa:0});manager.update();assert.deepEqual(cell(),[0,3]);
+  Object.assign(values,{happy:.1});manager.update();assert.deepEqual(cell(),[0,2]);
+  assert.throws(()=>validateModelProfile({version:1,id:"t",runtime:{mouthAtlas:{...mouthAtlas,neutral:[8,0]}}}),/mouthAtlas/);
+});

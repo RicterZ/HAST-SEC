@@ -1,6 +1,7 @@
 // 角色适配 profile: 导入时 conversion 把骨骼模型转换为 VRM, runtime 嵌入 VRM 后由网页读取.
 // 模型没有嵌入 profile 时, 所有函数都返回 null 或不做任何修改, 保持官方逻辑.
 import {MeshToonMaterial,SRGBColorSpace} from "three";
+import {VRMExpression} from "@pixiv/three-vrm";
 export const PROFILE_VERSION=1,PROFILE_EXTRA="hastModelProfile";
 const fail=message=>{throw new Error("角色 profile 无效: "+message);};
 const isObject=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -19,6 +20,11 @@ function validateRuntime(r){
   }
   if(r.attachments!==undefined){
     if(!Array.isArray(r.attachments)||!r.attachments.every(a=>isObject(a)&&typeof a.node==="string"&&a.node&&typeof a.bone==="string"&&a.bone))fail("runtime.attachments");
+  }
+  if(r.mouthAtlas!==undefined){
+    const m=r.mouthAtlas,cell=c=>Array.isArray(c)&&c.length===2&&c.every(Number.isInteger)&&c[0]>=0&&c[1]>=0&&c[0]<m.grid[0]&&c[1]<m.grid[1];
+    if(!isObject(m)||typeof m.material!=="string"||!m.material||!(Array.isArray(m.grid)&&m.grid.length===2&&m.grid.every(n=>Number.isInteger(n)&&n>0&&n<=64))||!vector(m.origin,2)||!cell(m.neutral)||!Array.isArray(m.rules))fail("runtime.mouthAtlas");
+    for(const [i,rule] of m.rules.entries())if(!isObject(rule)||typeof rule.name!=="string"||!rule.name||!number(rule.min,0,1)||!cell(rule.cell))fail("runtime.mouthAtlas.rules["+i+"]");
   }
   if(r.armPose!==undefined){
     const a=r.armPose;
@@ -89,10 +95,28 @@ function attachNodes(vrm,attachments){
   vrm.scene.updateMatrixWorld(true);
 }
 
+// 嘴型图集: 表情不靠形态键, 而是切换贴图格子. 贴图偏移不能按权重混合, 所以每帧按 rules 顺序
+// 取第一条权重达到 min 的规则显示其格子; 同一表情可写多条规则表示不同张口程度.
+function mouthAtlas(vrm,atlas){
+  const manager=vrm.expressionManager;
+  for(const {name} of atlas.rules)if(!manager.getExpression(name))manager.registerExpression(new VRMExpression(name));
+  const maps=new Set();
+  vrm.scene.traverse(object=>{if(object.isMesh)for(const material of [object.material].flat())if(material.name===atlas.material&&material.map)maps.add(material.map);});
+  if(!maps.size)throw new Error("profile 嘴型图集材质不存在: "+atlas.material);
+  const show=([column,row])=>{for(const map of maps)map.offset.set(atlas.origin[0]+column/atlas.grid[0],atlas.origin[1]+row/atlas.grid[1]);};
+  const update=manager.update.bind(manager);
+  manager.update=(...args)=>{
+    update(...args);
+    show(atlas.rules.find(rule=>(manager.getValue(rule.name)??0)>=rule.min)?.cell??atlas.neutral);
+  };
+  show(atlas.neutral);
+}
+
 export function applyModelProfile(vrm,profile){
   vrm.modelProfile=profile;
   if(!profile)return vrm;
   if(profile.runtime.material==="toon")toonMaterials(vrm);
   if(profile.runtime.attachments?.length)attachNodes(vrm,profile.runtime.attachments);
+  if(profile.runtime.mouthAtlas)mouthAtlas(vrm,profile.runtime.mouthAtlas);
   return vrm;
 }
