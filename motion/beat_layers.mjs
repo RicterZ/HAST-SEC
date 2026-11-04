@@ -44,7 +44,7 @@ export function beatLayers(bones,sources){
   for(let j=0;j<bones.length;j++){if(!groups[j].length)continue;let total=Math.max(0,1-sums[j]),value=new Quaternion(...base[j]);
    for(const r of groups[j]){value.slerp(r.q,r.w/(total+r.w));total+=r.w;}output[j]=value.normalize().toArray();sums[j]=Math.min(1,sums[j]);
   }
-  last={time,weights:sums,tracks:tracks.map(t=>({id:t.id,key:t.key,part:t.part,side:t.side,source:t.skill.source,source_frame:t.skill.start,age:time-t.start,weight:weight(t,time),fade_seconds:t.fade,cycles:t.cycles,mask:t.mask}))};
+  last={time,weights:sums,tracks:tracks.map(t=>({id:t.id,key:t.key,part:t.part,side:t.side,source:t.skill.source,source_frame:t.skill.start,age:time-t.start,speed:t.speed,weight:weight(t,time),fade_seconds:t.fade,cycles:t.cycles,mask:t.mask}))};
   return output;
  }
  return {sample,add,active:()=>tracks.length>0,state:()=>last??{time,tracks:[],weights:Array(bones.length).fill(0)},clear(){for(const t of tracks){t.cancelWeight=weight(t,time);t.cancelAt=time;}},reset(){time=0;tracks=[];last=null;serial=0;}};

@@ -30,8 +30,8 @@ export function qwenIntent(root,classes,options={}){
   try{const loadStart=performance.now();await process.ensure();const loadSeconds=(performance.now()-loadStart)/1000;
    signal.throwIfAborted();const selected=generation==='v15'?extended:requests,raw=await selected.plan(text,context,signal),content=raw.choices?.[0]?.message?.content;primed=true;
    const parsed=JSON.parse(content),sides={'left':'左','right':'右'};let result;
-   try{result=compileSlots(parsed,{parts:generation==='v15'});}catch(e){if(generation!=='v15')throw e;result={...parsed,operation:'unsupported',intents:[],timing:'同时'};}
-   if(generation==='v15'&&(result.operation==='unsupported'||(result.operation==='command'&&!result.intents.length&&!result.base.change))){result.operation='chat';result.intents=[];result.base={change:false,name:'保持',motion:0,rest:true};}
+   try{result=compileSlots(parsed,{parts:generation==='v15'});}catch(e){if(generation!=='v15')throw e;result={...parsed,operation:'unsupported',intents:[],hands:[],timing:'同时'};}
+   if(generation==='v15'&&(result.operation==='unsupported'||(result.operation==='command'&&!result.intents.length&&!result.hands?.length&&!result.base.change))){result.operation='chat';result.intents=[];result.base={change:false,name:'保持',motion:0,rest:true};}
    const confirmation=result.intents.map(i=>{const [side,motion]=i.key.split('-');return sides[side]+'侧'+motion;}).join(', ');
    if(result.operation==='chat'){
     const answer=await selected.chat(text,context,generation==='v15',signal),content=answer.choices?.[0]?.message?.content;

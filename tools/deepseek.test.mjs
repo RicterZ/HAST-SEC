@@ -4,7 +4,7 @@ import {qwenIntent} from '../service/qwen_intent.mjs';
 import {validateResult} from '../service/motion_result.mjs';
 const env={HAST_LLM_PROVIDER:'deepseek',DEEPSEEK_API_KEY:'test-secret'};
 const base={change:false,name:'保持',motion:0,rest:true};
-const command={reply:'好的',operation:'command',base,intents:[{side:'右',part:'手臂',action:'上抬',height:'默认',幅度:1,速度:1,hold:2,delay:0}]};
+const command={reply:'好的',operation:'command',base,intents:[{side:'右',part:'手臂',hand:'默认',action:'上抬',height:'默认',幅度:1,速度:1,hold:2,delay:0}]};
 const dialogue={reply:'你好呀',expression:'happy',gesture:'none',engagement:'brief'};
 const response=(value,finish_reason='stop')=>Response.json({choices:[{finish_reason,message:{content:typeof value==='string'?value:JSON.stringify(value)}}],usage:{total_tokens:42}});
 function fixture(replies,extra={}){

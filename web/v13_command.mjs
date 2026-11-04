@@ -1,7 +1,7 @@
 import {randomUUID} from './browser_crypto.mjs';
 import {motionName} from './v13_panels.mjs';
 const $=id=>document.getElementById(id);
-export function commandLoop({assets,policy,history,behavior,layers,pose,play,speech,prepare,generation,dialogue}){
+export function commandLoop({assets,policy,history,behavior,layers,hands,pose,play,speech,prepare,generation,dialogue}){
  const session=randomUUID();
  const sendLabel=$('send').textContent;
  let pending=null,revision=0,context=[],lastPlan=null,selections=[],self=false,queue=[];
@@ -17,7 +17,8 @@ export function commandLoop({assets,policy,history,behavior,layers,pose,play,spe
   const interrupted=self;if(interrupted)cancel();const ticket=++revision;pending=new AbortController();dialogue?.pending(true);$('send').disabled=false;$('send').textContent=sendLabel;$('status').textContent='正在理解你的消息...';
   try{if(interrupted){const r=await fetch('/v13-api/interrupt',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session}),signal:pending.signal});if(!r.ok)throw Error('自主聊天取消失败.');}if(ticket!==revision)return;await prepare();if(ticket!==revision)return;const response=await fetch('/v13-api/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,context,session,...(generation==='v15'?{generation}:{})}),signal:pending.signal}),plan=await response.json();if(ticket!==revision)return;if(!response.ok)throw Error(plan.error);
    for(const i of plan.intents)await assets.load(assets.entries.get(i.key));if(ticket!==revision)return;
-   if(plan.operation==='release')layers.clear();selections=[];
+   if(plan.operation==='release'){layers.clear();hands?.clear();}selections=[];
+   for(const hand of plan.hands??[])hands?.add(hand);
    for(const intent of plan.intents){const entry=assets.entries.get(intent.key);if(entry.side==='body'){layers.clear();continue;}
     const selected=policy.select(entry,history());selections.push(selected.report);layers.add(selected.entry,{...intent,...selected.options},pose());
    }

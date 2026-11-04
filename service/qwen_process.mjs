@@ -22,7 +22,7 @@ export function qwenProcess(root){
   if(!verified){if(await hash(c.model)!==c.sha256||await hash(c.server)!==c.server_sha256)throw Error('中文模型或运行库校验不符.');verified=true;}
   if(current!==ticket)throw Error('中文模型启动已取消.');
   try{await fetch(endpoint+'/health',{signal:AbortSignal.timeout(300)});throw Error('中文服务端口已占用, 请设置HAST_LLM_PORT.');}catch(e){if(e.message.startsWith('中文服务端口'))throw e;}
-  const args=['-m',resolve(root,c.model),'--host','127.0.0.1','--port',String(port),'-c','8192','-b','512','-ub','512','-t',String(c.threads),'-tb',String(c.threads),'-ngl',String(c.gpu_layers??0),'--parallel','2','--jinja','--no-webui'];
+  const args=['-m',resolve(root,c.model),'--host','127.0.0.1','--port',String(port),'-c','16384','-b','512','-ub','512','-t',String(c.threads),'-tb',String(c.threads),'-ngl',String(c.gpu_layers??0),'--parallel','2','--jinja','--no-webui'];
   if(c.device!=='CPU')args.push('--device',c.device,'--flash-attn','on');
   const owned=spawn(resolve(root,c.server),args,{windowsHide:true,stdio:['ignore','ignore','pipe']});
   child=owned;let error='';owned.stderr.on('data',b=>{error=(error+b).slice(-1200);});

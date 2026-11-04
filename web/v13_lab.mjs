@@ -39,7 +39,7 @@ try{
  data.config.arm_collision_enabled=true;data.config.cached_derivative=true;view=await feasibleView(data.history,data.config,data.regions,{controllerFactory:controllerV9,faceSetup:registerV9Face,faceGroups:FACE_GROUPS,measureHead:headReference});
  policy=await selected.policy(assets.library);layers=beatLayers(data.motion.meta.bones,assets.sources);clock=fixedClock(step,view.validate,20,data.motion.meta.bones);
  trainingPanel(policy);selected.decorate(policy);
- const ctx={assets,policy,history:()=>history,behavior,layers,pose:()=>raw??basePose};
+ const ctx={assets,policy,history:()=>history,behavior,layers,hands:view.hands,pose:()=>raw??basePose};
  if(selected.generation==='v15')dialogue=dialogueController({view,...ctx});
  commands=commandLoop({...ctx,play,speech,dialogue,generation:selected.generation,prepare:()=>latency.prepare()});latency=lowLatency(commands.session);dialogue?.bind(commands.proactive,()=>playing);reset();$('play').disabled=false;$('reset').disabled=false;
  $('text').onfocus=()=>{void latency.prepare().catch(()=>{});};
