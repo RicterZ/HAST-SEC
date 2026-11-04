@@ -11,3 +11,14 @@ test('hand shapes compile into timed finger curls without touching arm keys', ()
  assert.deepEqual(compileSlots({intents:[slot({part:'腿',action:'上抬',hand:'握拳'})]},{parts:true}).hands,[]);
  assert.deepEqual(compileSlots({intents:[slot()]},{parts:true}).hands,[]);
 });
+import {qwenRequests} from '../service/qwen_requests.mjs';
+test('remote JSON requests fold history into the latest user message', async()=>{
+ const sent=[],remote={request:async p=>{sent.push(p.messages);return {};}};
+ const requests=qwenRequests('',{schema:{},prompt:'P',examples:[{role:'user',content:'e'},{role:'assistant',content:'{}'}]},remote);
+ const context=[{role:'user',content:'讲个故事'},{role:'assistant',content:'从前有盏灯.'}];
+ await requests.plan('后来呢',context);await requests.chat('后来呢',context,true);
+ for(const messages of sent){const last=messages.at(-1);assert.equal(last.role,'user');assert.match(last.content,/流明: 从前有盏灯[\s\S]*最新消息: 后来呢$/);assert.equal(messages.some(m=>m.content==='从前有盏灯.'),false);}
+ const local=[],plain=qwenRequests('http://x',{schema:{},prompt:'P',examples:[]},null);
+ globalThis.fetch=async(u,i)=>{local.push(JSON.parse(i.body).messages);return {ok:true,json:async()=>({})};};
+ await plain.plan('后来呢',context);assert.deepEqual(local[0].slice(1),[...context,{role:'user',content:'后来呢'}]);
+});

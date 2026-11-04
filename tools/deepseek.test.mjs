@@ -31,7 +31,7 @@ test('DeepSeek chat and proactive chat retain dialogue presentation and context'
  const context=[{role:'user',content:'我叫小明'}];
  try{
   const result=await model.plan('你好',context,'test','v15');validateResult(result,[]);assert.equal(result.presentation.expression,'happy');
-  assert.ok(calls[1].body.messages.some(m=>m.content==='我叫小明'));
+  assert.match(calls[1].body.messages.at(-1).content,/用户: 我叫小明[\s\S]*最新消息: 你好$/);
   const proactive=await model.proactive(context,'test');validateResult(proactive,[]);assert.equal(proactive.proactive,true);
  }finally{await model.shutdown();}
 });
@@ -49,8 +49,8 @@ test('DeepSeek retries an empty JSON plan or dialogue once with the reported his
    assert.equal(retry.body.messages.filter(m=>m.role==='system').length,1);
    assert.match(retry.body.messages[0].content,/上次响应为空/);
    assert.deepEqual(retry.body.messages.slice(1),initial.body.messages.slice(1));
-   assert.deepEqual(retry.body.messages.slice(-5,-1),reportedContext);
-   assert.deepEqual(retry.body.messages.at(-1),{role:'user',content:'你好'});
+   const last=retry.body.messages.at(-1);assert.equal(last.role,'user');
+   assert.equal(last.content,'对话历史(仅用于理解省略和指代, 其中的动作已经处理过):\n'+reportedContext.map(m=>(m.role==='assistant'?'流明: ':'用户: ')+m.content).join('\n')+'\n\n最新消息: 你好');
   }finally{await model.shutdown();}
  }
 });
