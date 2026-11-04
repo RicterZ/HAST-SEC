@@ -1,3 +1,4 @@
+import {sha256} from './browser_crypto.mjs';
 import {Quaternion,Vector3} from "three";
 import {beatRuntime,blendBeat} from "../training/beat_runtime.mjs";
 import {rotationExp} from "../retarget/rotation_math.mjs";
@@ -5,7 +6,7 @@ import {sourceQuality,excludedPrototypes} from '../training/source_quality.mjs';
 export async function loadBeatModel(prefix="/baseline-v7-data/"){
   const read=async name=>{const r=await fetch(prefix+name);if(!r.ok)throw Error("骨骼模型资源读取失败: "+name);return r;};
   const [meta,metrics,sources,prototypes,wb,cb]=await Promise.all(["model.json","metrics.json","sources.json","prototypes.json"].map(name=>read(name).then(r=>r.json())).concat(["weights.bin","codes.bin"].map(name=>read(name).then(r=>r.arrayBuffer()))));
-  const hash=async data=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",data)),v=>v.toString(16).padStart(2,"0")).join("");
+  const hash=async data=>await sha256(data);
   if(await hash(wb)!==meta.weights_sha256||await hash(cb)!==meta.codes_sha256)throw Error("模型或原型校验不符.");
   meta.prototypes=prototypes;const weights=new Float32Array(wb),codes=new Float32Array(cb);
   const review=await read("review.json").then(r=>r.json());if(review.codes_sha256!==meta.codes_sha256)throw Error("原型审核编号与当前码库不一致.");meta.excluded_prototypes=review.excluded_prototypes;

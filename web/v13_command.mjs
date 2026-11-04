@@ -1,7 +1,8 @@
+import {randomUUID} from './browser_crypto.mjs';
 import {motionName} from './v13_panels.mjs';
 const $=id=>document.getElementById(id);
 export function commandLoop({assets,policy,history,behavior,layers,pose,play,speech,prepare,generation,dialogue}){
- const session=crypto.randomUUID();
+ const session=randomUUID();
  const sendLabel=$('send').textContent;
  let pending=null,revision=0,context=[],lastPlan=null,selections=[],self=false,queue=[];
  function remember(messages){context=[...context,...messages].slice(-4);while(context.reduce((n,r)=>n+r.content.length,0)>1200)context=context.slice(1);}
