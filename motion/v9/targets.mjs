@@ -10,13 +10,15 @@ export function targetsV9(rig,dynamics,contact,proposal,target,settings,handGoal
   return state=>{
     const residual=[],hard=[],metrics={contacts:[]};
     hands.forEach((i,j)=>{const task=handGoal?.bone===rig.names[i],error=state.p[i].clone().sub(task?bodyWorldPoint(rig,state,handGoal.point,handGoal.reference):handTargets[j]);residual.push(...error.multiplyScalar(task?30:.6/.06).toArray());if(task)metrics.task_hand_error_cm=error.length()/30*100;});
-    if(handGoal){const arm=armTask(rig,state,handGoal);residual.push(...arm.residual);hard.push(...arm.hard);Object.assign(metrics,arm.metrics);}
+    if(handGoal){const arm=armTask(rig,state,{...handGoal,seated:!!proposal.seat});residual.push(...arm.residual);hard.push(...arm.hard);Object.assign(metrics,arm.metrics);}
     if(proposal.seat){
       const seat=proposal.seat,error=state.p[0].clone().sub(seat.pelvis);
       residual.push(...error.clone().multiplyScalar(60).toArray());hard.push(Math.max(0,error.length()/settings.contact_tolerance_m-1));
       metrics.contacts.push({bone:'hips',active:true,slip_m:error.length(),support:seat.support});
       for(const [i,name]of rig.names.entries())if(/Leg|Foot|Toes/.test(name)){
-        const penetration=Math.max(0,seat.floor-state.p[i].y);residual.push(penetration*100);hard.push(Math.max(0,penetration/.002-1));
+        // Toes only carry a strong cost: leaving a floor seat swings the tips through the floor for a few frames.
+        const penetration=Math.max(0,seat.floor-state.p[i].y);if(/Toes$/.test(name)){residual.push(penetration*400);continue;}
+        residual.push(penetration*100);hard.push(Math.max(0,penetration/.002-1));
       }
       metrics.posture=seat.mode;metrics.support_kind=seat.transition?'support-transfer':seat.support;
     }
@@ -35,7 +37,7 @@ export function targetsV9(rig,dynamics,contact,proposal,target,settings,handGoal
     if(settings.arm_collision_enabled){
       for(const side of ['left','right']){
         if(handGoal?.bone===side+'Hand')continue;
-        const arm=armTask(rig,state,{bone:side+'Hand'});
+        const arm=armTask(rig,state,{bone:side+'Hand',seated:!!proposal.seat});
         residual.push(...arm.residual);hard.push(...arm.hard);
         metrics[side+'_body_clearance_m']=arm.metrics.task_min_body_clearance_m;
       }

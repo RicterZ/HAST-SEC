@@ -28,6 +28,8 @@ export function jointPolicy(name,mode='standing'){
     const reverse=mode!=='seated-vrm0';
     return {...p,hard:/LowerLeg$/.test(name)?[reverse?[-5,175]:[-175,5],[-18,18],[-5,5]]:[[-130,130],[-85,85],[-65,65]],soft:/LowerLeg$/.test(name)?[reverse?[-3,170]:[-170,3],[-12,12],[-3,3]]:[[-125,125],[-75,75],[-60,60]]};
   }
+  // 跪坐类姿势需要更大的跖屈, 让脚背贴地.
+  if(mode!=='standing'&&/Foot$/.test(name)){const m=mode==='seated-vrm0'?-1:1,span=(a,b)=>m>0?[a,b]:[-b,-a];return {...p,hard:[span(-55,65),p.hard[1],p.hard[2]],soft:[span(-50,60),p.soft[1],p.soft[2]]};}
   // 膝关节范围随屈曲角改变, 为其保留独立副本, 防止本次查询修改下次的范围.
   return /LowerLeg$/.test(name)?{...p,hard:p.hard.map(r=>r.slice()),soft:p.soft.map(r=>r.slice())}:p;
 }

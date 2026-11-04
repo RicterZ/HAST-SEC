@@ -1,3 +1,4 @@
+import {humanBones} from '../service/avatar_profile.mjs';
 import {copyFile,mkdir,readFile,stat,writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {basename,extname,resolve} from 'node:path';
@@ -16,9 +17,8 @@ if(profilePath){
   else{const result=await convertModel(bytes,modelProfile,{modelName:basename(path,extname(path)),requiredBones:profile.bone_order});bytes=result.bytes;console.log(JSON.stringify(result.report));}
   json=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString('utf8'));
 }
-const v1=json.extensions?.VRMC_vrm,v0=json.extensions?.VRM;
-if(!v1&&!v0)throw Error('文件不包含VRM信息; 其他骨骼模型请用 --profile 指定适配 profile.');
-const bones=v1?v1.humanoid.humanBones:Object.fromEntries(v0.humanoid.humanBones.map(b=>[b.bone,{node:b.node}]));
+const bones=humanBones(json);
+if(!bones)throw Error('文件不包含VRM信息; 其他骨骼模型请用 --profile 指定适配 profile.');
 if(profile.bone_order.some(name=>!bones[name]))throw Error('角色骨骼不完整, 需包含人形、眼睛和手指骨骼.');
 await mkdir(resolve(root,'assets'),{recursive:true});
 if(profilePath)await writeFile(output,bytes);else await copyFile(path,output);
