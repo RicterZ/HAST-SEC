@@ -22,13 +22,19 @@ function buildPolicy(name){
   return {...range,speed:speed*RAD,accel:accel*RAD,jerk:accel*16*RAD};
 }
 const policies=new Map();
-export function jointPolicy(name){
+export function jointPolicy(name,mode='standing'){
   if(!policies.has(name))policies.set(name,buildPolicy(name));const p=policies.get(name);
+  if(mode!=='standing'&&/UpperLeg$|LowerLeg$/.test(name)){
+    const reverse=mode!=='seated-vrm0';
+    return {...p,hard:/LowerLeg$/.test(name)?[reverse?[-5,175]:[-175,5],[-18,18],[-5,5]]:[[-130,130],[-85,85],[-65,65]],soft:/LowerLeg$/.test(name)?[reverse?[-3,170]:[-170,3],[-12,12],[-3,3]]:[[-125,125],[-75,75],[-60,60]]};
+  }
+  // 跪坐类姿势需要更大的跖屈, 让脚背贴地.
+  if(mode!=='standing'&&/Foot$/.test(name)){const m=mode==='seated-vrm0'?-1:1,span=(a,b)=>m>0?[a,b]:[-b,-a];return {...p,hard:[span(-55,65),p.hard[1],p.hard[2]],soft:[span(-50,60),p.soft[1],p.soft[2]]};}
   // 膝关节范围随屈曲角改变, 为其保留独立副本, 防止本次查询修改下次的范围.
   return /LowerLeg$/.test(name)?{...p,hard:p.hard.map(r=>r.slice()),soft:p.soft.map(r=>r.slice())}:p;
 }
-export function projectJoint(name,value,strength=2){
-  const q=finiteQuaternion(value),p=jointPolicy(name),v=jointCoordinates(name,q);
+export function projectJoint(name,value,strength=2,mode='standing'){
+  const q=finiteQuaternion(value),p=jointPolicy(name,mode),v=jointCoordinates(name,q);
   // 对根的偏航独立处理, 防止大偏航混入侧倾的旋转对数.
   if(name==='hips'){
     const up=new Vector3(0,1,0).applyQuaternion(q),tilt=Math.acos(Math.max(-1,Math.min(1,up.y))),max=18*RAD;
@@ -43,4 +49,4 @@ export function projectJoint(name,value,strength=2){
   if(!/LowerLeg$|LowerArm$|Thumb|Index|Middle|Ring|Little/.test(name)&&v.length()>178*RAD)v.setLength(178*RAD);
   return jointRotation(name,v);
 }
-export function violation(name,value){const p=jointPolicy(name),q=finiteQuaternion(value);if(name==='hips')return Math.max(0,new Vector3(0,1,0).applyQuaternion(q).angleTo(new Vector3(0,1,0))-18*RAD);const v=jointCoordinates(name,q);if(/LowerLeg$/.test(name)){const t=Math.min(18,5+Math.abs(v.x/RAD)*.08);p.hard[1]=[-t,t];}return Math.max(0,...p.hard.flatMap((r,i)=>[r[0]*RAD-v.getComponent(i),v.getComponent(i)-r[1]*RAD]));}
+export function violation(name,value,mode='standing'){const p=jointPolicy(name,mode),q=finiteQuaternion(value);if(name==='hips')return Math.max(0,new Vector3(0,1,0).applyQuaternion(q).angleTo(new Vector3(0,1,0))-18*RAD);const v=jointCoordinates(name,q);if(/LowerLeg$/.test(name)){const t=Math.min(18,5+Math.abs(v.x/RAD)*.08);p.hard[1]=[-t,t];}return Math.max(0,...p.hard.flatMap((r,i)=>[r[0]*RAD-v.getComponent(i),v.getComponent(i)-r[1]*RAD]));}

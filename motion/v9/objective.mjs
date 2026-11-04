@@ -3,7 +3,7 @@ import {inertialResidual} from './inertia.mjs';
 export function objective(rig,build,target,start,physical,history,dt,quality=null,observed=target,settings={},handGoal=null){
   return point=>{
     const state=rig.fk(point.q,point.p),tasks=build(state),residual=[...tasks.residual];
-    point.q.forEach((q,i)=>residual.push(...rotationStep(target[i],q).multiplyScalar((/Leg|Foot/.test(rig.names[i])?.4:1.2)*(handGoal&&/^(hips|spine|chest|neck|head)$/.test(rig.names[i])?4:1)*Math.sqrt(quality?.[i]??1)).toArray()));
+    point.q.forEach((q,i)=>residual.push(...rotationStep(target[i],q).multiplyScalar((/Leg|Foot/.test(rig.names[i])?(tasks.metrics.posture?4:.4):1.2)*(handGoal&&/^(hips|spine|chest|neck|head)$/.test(rig.names[i])?4:1)*Math.sqrt(quality?.[i]??1)).toArray()));
     residual.push(...point.p.clone().sub(start).multiplyScalar(.5).toArray());
     residual.push(...inertialResidual(rig,point.q,observed,history,dt,quality,settings));
     const dynamics=physical?.evaluate(state,point.q,history,dt),components=dynamics?.components??{};

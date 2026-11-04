@@ -15,7 +15,7 @@ export function fixedClock(step,validate,rate=20,names=[]){
   function display(){
     if(!current)return null;const t=Math.max(0,Math.min(1,remaining/period)),expressions={};
     for(const n of Object.keys(current.expressions))expressions[n]=(previous.expressions[n]??0)*(1-t)+current.expressions[n]*t;
-    const result={...current,rotations:current.rotations.map((q,i)=>{const a=new Quaternion().fromArray(previous.rotations[i]),b=new Quaternion().fromArray(q),name=names[i];return (name?projectJoint(name,name==='hips'?a.slerp(b,t):jointRotation(name,jointCoordinates(name,a).lerp(jointCoordinates(name,b),t)),0):a.slerp(b,t)).toArray();}),root:current.root.map((v,i)=>previous.root[i]*(1-t)+v*t),expressions};
+    const result={...current,rotations:current.rotations.map((q,i)=>{const a=new Quaternion().fromArray(previous.rotations[i]),b=new Quaternion().fromArray(q),name=names[i];return (name?projectJoint(name,name==='hips'?a.slerp(b,t):jointRotation(name,jointCoordinates(name,a).lerp(jointCoordinates(name,b),t)),0,current.limitMode??'standing'):a.slerp(b,t)).toArray();}),root:current.root.map((v,i)=>previous.root[i]*(1-t)+v*t),expressions};
     return validate(result)?result:current;
   }
   return {reset,advance,display,state:()=>({steps,remaining,rate})};

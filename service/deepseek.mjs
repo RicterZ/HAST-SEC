@@ -7,6 +7,7 @@ const MOTIONS={'下放':'向下放低','前伸':'向前移动','后移':'向后�
 const HEIGHTS={'默认':'向上抬高','齐平头部':'向上抬到头部高度','高于头顶':'向上举过头部'};
 const CURLS={'握拳':1,'张开':0};
 const POSTURES={'静止':{change:true,name:'静止',motion:0,rest:true},'自然活动':{change:true,name:'自然活动',motion:.45,rest:false}};
+const SEATS={'站起':'standing','鸭子坐':'duck','左侧坐':'side-left','右侧坐':'side-right','摆腿坐':'swing'};
 const KEEP={change:false,name:'保持',motion:0,rest:true};
 const EXPRESSIONS=[['angry',/😤|😠|💢/u],['sad',/🫂|💙|😢|😭|🥲/u],['pout',/🥺/u],['shy',/☺️|😳/u],['surprised',/😮|😲|😯/u],['confused',/🤔|😕/u],['heart',/💖|💕|❤️|😍|🥰/u],['star',/🌟|⭐|🎉/u],['happy',/😄|😁|😆|😊/u],['friendly',/👋|✨|🙂/u]];
 
@@ -24,12 +25,12 @@ const action={type:'object',additionalProperties:false,required:['part','side','
 export const TOOLS=[
  {type:'function',function:{name:'perform_actions',description:'让角色执行一个动作序列. actions 按顺序依次执行, 前一项结束后才开始下一项.',parameters:{type:'object',additionalProperties:false,required:['actions'],properties:{actions:{type:'array',minItems:1,maxItems:8,items:action}}}}},
  {type:'function',function:{name:'release',description:'取消当前动作, 把手脚放下.',parameters:{type:'object',additionalProperties:false,properties:{}}}},
- {type:'function',function:{name:'set_posture',description:'切换待机状态: 静止站立或自然活动.',parameters:{type:'object',additionalProperties:false,required:['mode'],properties:{mode:{type:'string',enum:['静止','自然活动']}}}}}
+ {type:'function',function:{name:'set_posture',description:'切换站姿或坐姿. 坐下默认鸭子坐; 侧坐默认左侧坐; 摆腿坐如坐在椅子/秋千上, 双腿前后轻摆. 站起恢复站立.',parameters:{type:'object',additionalProperties:false,required:['mode'],properties:{mode:{type:'string',enum:['静止','自然活动','站起','鸭子坐','左侧坐','右侧坐','摆腿坐']}}}}}
 ];
 export const SYSTEM='你自己叫流明, 是一个桌面数字人, 用户是玩家, 不要把用户称为流明. 用自然中文和玩家交流, 回复直接作为你说的话显示. 每次回复自然使用1至3个emoji表达情绪, 表情须符合语义. 只说你知道的事实, 不编造天气、时间或真实经历. 简短问候一般一句, 用户要求展开时回答三至四句.\n'+
  '身体动作通过工具执行. 只有最新消息要求做动作时才调用工具; 历史中的动作已经执行过, 不要重复. 左右均指角色自身. 能力: 手臂上抬(默认/齐平头部/高于头顶)、下放、前伸、后移、左移、右移、摆臂、挥手、自然活动; 手形握拳或张开; 单腿上抬; 静止站立或自然活动; 放下. '+
  '复合动作用这些能力组合表达, 不要说不会: 出拳=手臂前伸+握拳+速度2+hold 0.3; 踢腿=腿上抬+速度2+hold 0.3; 举拳=上抬+握拳; 欢呼=双侧上抬高于头顶; 打招呼=挥手. 先后进行的动作按顺序放进 actions; 双手一起做用side=双, 不同动作同时开始用同时=true. '+
- '坐下、躺下、跳跃、转身、点头、看着玩家等确实无法组合的动作不要调用工具, 直接说明还没学会; 鼠标移到舞台上时你会自动看向鼠标. 调用工具时可以附一句很短的回复, 也可以不回复.';
+ '坐下/鸭子坐、左侧坐、右侧坐、摆腿坐、站起用set_posture. 坐姿中仍可挥手、握拳、聊天; 坐姿中不要调用腿上抬, 要摆腿用摆腿坐, 要踢腿先让玩家站起. 侧坐未指定方向默认左侧坐. 静止和自然活动只改变上半身活跃程度, 不会站起; 放下不改变坐姿. 躺下、跳跃、转身、点头、看着玩家等确实无法组合的动作不要调用工具, 直接说明还没学会; 鼠标移到舞台上时你会自动看向鼠标. 调用工具时可以附一句很短的回复, 也可以不回复.';
 
 function check(value,schema,path='参数'){
  if(schema.type==='object'){
@@ -48,13 +49,13 @@ function check(value,schema,path='参数'){
 
 // 工具调用 -> 动作接口. step 为执行顺序, 具体开始时间由页面按各动作实际时长排列.
 export function compileTools(calls){
- const intents=[],hands=[],names=[];let operation='chat',base=KEEP,step=-1;
+ const intents=[],hands=[],names=[];let operation='chat',base=KEEP,step=-1,posture=null;
  for(const call of calls){
   const tool=TOOLS.find(t=>t.function.name===call.function?.name);if(!tool)throw Error('未知工具 '+call.function?.name);
   let args;try{args=JSON.parse(call.function.arguments||'{}');}catch{throw Error(tool.function.name+' 参数不是 JSON');}
   check(args,tool.function.parameters);
   if(tool.function.name==='release'){operation='release';names.push('放下');continue;}
-  if(tool.function.name==='set_posture'){if(operation!=='release')operation='command';base=POSTURES[args.mode];names.push(args.mode);continue;}
+  if(tool.function.name==='set_posture'){if(operation!=='release')operation='command';if(SEATS[args.mode]){if(posture)throw Error('一次只切换一种坐姿');posture=SEATS[args.mode];base={change:true,name:args.mode,motion:.15,rest:false};}else base=POSTURES[args.mode];names.push(args.mode);continue;}
   if(operation!=='release')operation='command';
   for(const [index,a] of args.actions.entries()){
    const {part,side,action,height='默认',hand='默认',幅度=1,速度=1,hold=2,同时=false}=a;
@@ -69,8 +70,9 @@ export function compileTools(calls){
    names.push((side==='双'?'双侧':side+'侧')+(hand==='默认'?'':hand)+(action==='保持不动'?'':motion));
   }
  }
+ if(posture&&posture!=='standing'&&intents.some(i=>i.key.endsWith('-抬腿')))throw Error('坐姿不能同时抬腿, 请使用摆腿坐');
  if(intents.length>8)throw Error('动作数量过多');
- return {operation,base,intents,hands,timing:step>0?'依次':'同时',summary:names.join(', ')};
+ return {operation,base,intents,hands,...(posture?{posture}:{}),timing:step>0?'依次':'同时',summary:names.join(', ')};
 }
 
 // 页面回传的对话历史: user/assistant 文本, 以及动作轮次的 assistant tool_calls + tool 结果.

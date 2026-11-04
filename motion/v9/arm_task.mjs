@@ -10,12 +10,13 @@ export function segmentDistance(a,b,c,d){
 }
 export function armTask(rig,state,goal){
  const side=goal.bone.startsWith('right')?'right':'left',idx=n=>rig.index(n),P=n=>state.p[idx(n)],shoulder=P(side+'UpperArm'),elbow=P(side+'LowerArm'),wrist=P(side+'Hand'),up=new Vector3(0,1,0),width=rig.rest.p[idx('rightUpperArm')].distanceTo(rig.rest.p[idx('leftUpperArm')]);
- const upper=rig.offsets[idx(side+'LowerArm')].length(),torso=[P('hips'),P('neck'),width*.34],head=[P('head'),P('head').clone().addScaledVector(up,.10),width*.40],armRadius=Math.max(.018,upper*.10),segments=[[shoulder.clone().lerp(elbow,.25),elbow,armRadius],[elbow,wrist,armRadius],[wrist,wrist,.027]],clearances=[];
+ // Seated hands rest beside the hips, so the torso capsule must not bulge below the pelvis.
+ const upper=rig.offsets[idx(side+'LowerArm')].length(),torso=[goal.seated?P('hips').clone().addScaledVector(up,width*.34):P('hips'),P('neck'),width*.34],head=[P('head'),P('head').clone().addScaledVector(up,.10),width*.40],armRadius=Math.max(.018,upper*.10),segments=[[shoulder.clone().lerp(elbow,.25),elbow,armRadius],[elbow,wrist,armRadius],[wrist,wrist,.027]],clearances=[];
  for(const [a,b,r] of segments)for(const [c,d,R] of [torso,head])clearances.push(segmentDistance(a,b,c,d)-r-R);
  // X为标准化骨架的纵轴. 四元数取最短扭转, 不把相反符号误认为另一姿态.
  const twists=['Shoulder','UpperArm','LowerArm'].map(part=>{const i=idx(side+part),q=state.q[rig.parents[i]].clone().invert().multiply(state.q[i]);return 2*Math.atan2(Math.abs(q.x),Math.abs(q.w));}),limits=[20,35,35].map(d=>d*Math.PI/180);
  // 范围内没有代价; 超范围的二次残差在最小二乘中成为四次代价.
- const residual=[...twists.map((a,i)=>2*(Math.max(0,a-limits[i])/(30*Math.PI/180))**2),...clearances.map(v=>2*(Math.max(0,.005-v)/.03)**2)],hard=clearances.map(v=>Math.max(0,(-v-.002)/.03));
+ const residual=[...twists.map((a,i)=>2*(Math.max(0,a-limits[i])/(30*Math.PI/180))**2),...clearances.map(v=>2*(Math.max(0,.005-v)/.03)**2)],hard=clearances.map(v=>Math.max(0,(-v-(goal.seated?.02:.002))/.03));
  const step=goal.previousHand?wrist.distanceTo(new Vector3().fromArray(goal.previousHand)):0;
  if(goal.maxStep){residual.push(Math.max(0,(step-.8*goal.maxStep)/(.2*goal.maxStep))**2);hard.push(Math.max(0,step/goal.maxStep-1));}
  return {residual,hard,metrics:{task_arm_twists_deg:twists.map(a=>a*180/Math.PI),task_arm_twist_soft_degrees:[20,35,35],task_hand_step_cm:step*100,task_min_body_clearance_m:Math.min(...clearances),task_max_body_penetration_m:Math.max(0,-Math.min(...clearances)),task_proxy_kind:'按骨架宽度估计的身体与头部胶囊, 不是衣服网格'}};
