@@ -10,7 +10,7 @@
     "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/setup.ps1",
     "check": "node tools/check.mjs",
     "avatar": "node tools/import_avatar.mjs",
-    "test": "node --test tools/model_profile.test.mjs"
+    "test": "node --test tools/*.test.mjs"
   },
   "dependencies": {"@pixiv/three-vrm": "3.5.5", "three": "0.180.0"}
 }

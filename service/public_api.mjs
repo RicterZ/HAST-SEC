@@ -8,7 +8,7 @@ export async function publicApi(root){
  const manifest=await read('manifest.json'),classes=await Promise.all(manifest.classes.map(c=>read(c.file)));
  const sources=(await Promise.all([0,1,2,3].map(i=>read(`sources-${i}.json`)))).flat(),library=await extraLibrary(root,{...manifest,classes,sources}),model=qwenIntent(root,classes);
  async function body(req){
-  if(req.headers.origin!=='http://'+req.headers.host||req.headers['content-type']!=='application/json')throw Error('只接受本机页面请求.');
+  if(req.headers.origin!=='http://'+req.headers.host||req.headers['content-type']!=='application/json')throw Error('只接受同源页面的 JSON 请求.');
   let length=0;const parts=[],timer=setTimeout(()=>req.destroy(),10000);
   try{for await(const part of req){length+=part.length;if(length>12000)throw Error('请求过大.');parts.push(part);}return JSON.parse(Buffer.concat(parts).toString('utf8'));}finally{clearTimeout(timer);}
  }
