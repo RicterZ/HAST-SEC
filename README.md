@@ -112,7 +112,7 @@ npm run avatar -- "D:\角色\CH0069.glb" --profile configs/model_profiles/kivo.j
 ```
 
 - `conversion` 只在导入 GLB 时使用: `humanBones` 把 HAST 骨骼名映射到模型节点名, `virtualBones` 为缺失的手指等骨骼补零长度子节点, `scale` 把模型单位换成米, `tPoseArms` 把 A-pose 手臂校准为 VRM 要求的 T-pose, `hideMeshes` 按节点名正则隐藏道具, `mouth` 可把与眼睛共用材质的嘴部拆出并使用外部嘴型贴图, `meta` 写入 VRM 元数据 (`{model}` 替换为文件名).
-- `runtime` 嵌入导入后的角色并在页面中生效: `material` (`original`/`toon`), `lighting` (背景色、环境光、跟随相机的主光), `attachments` (把独立节点挂到人形骨骼上, 如光环跟随头部), `armCollision` (是否启用手臂碰撞), `bodyYawLimitDegrees` (限制待机等动作中身体偏离正前方的角度), `lookAtPointer` (鼠标在舞台上时头颈转向光标, 限制最大转角并平滑过渡, 移开后恢复原动作), `armPose` (手臂比例与训练骨架差异大时, 按动作名正则把手臂动作映射为手部目标点, 以肩为原点、手臂长度为单位), `mouthAtlas` (没有形态键、靠切换贴图格子做嘴型的角色: 为 `rules` 中的表情注册 VRM 表情通道, 每帧按顺序取第一条权重达到 `min` 的规则显示对应格子, 都未达到时显示 `neutral`).
+- `runtime` 嵌入导入后的角色并在页面中生效: `material` (`original`/`toon`), `lighting` (背景色、环境光、跟随相机的主光), `attachments` (把独立节点挂到人形骨骼上, 如光环跟随头部), `armCollision` (是否启用手臂碰撞), `bodyYawLimitDegrees` (限制待机等动作中身体偏离正前方的角度), `lookAtPointer` (鼠标在舞台上时头颈转向光标, 限制最大转角并平滑过渡, 移开后恢复原动作), `armPose` (手臂比例与训练骨架差异大时, 按动作名正则把手臂动作映射为手部目标点, 以肩为原点、手臂长度为单位; 每个动作可设 `palm: "forward"` 让掌心朝前, `fingerCurl` 0–1 控制张开到握拳, `restFingerCurl` 为无动作时的手指弯曲), `mouthAtlas` (没有形态键、靠切换贴图格子做嘴型的角色: 为 `rules` 中的表情注册 VRM 表情通道, 每帧按顺序取第一条权重达到 `min` 的规则显示对应格子, 都未达到时显示 `neutral`).
 - `extends` 可继承另一份 profile, 对象逐层合并, 数组整体替换. VRM 输入只嵌入 `runtime`, 不做转换.
 
 `configs/model_profiles/kivo.json` 适用于 KivoWiki 的蔚蓝档案 3D 角色 (Bip001 骨架), 已用圣园未花、才羽桃井、白洲梓、栗村爱莉验证, 口型与情绪映射到 Kivo 共用的 8×8 嘴型图集; `configs/model_profiles/examples/kivo-mika.json` 演示在其基础上为单个角色换背景和挥手幅度. profile 只描述适配方式, 不授予模型的任何使用权利, 请遵守原始许可. `npm test` 检查 profile 解析与转换.

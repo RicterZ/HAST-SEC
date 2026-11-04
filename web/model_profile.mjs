@@ -33,10 +33,12 @@ function validateRuntime(r){
   }
   if(r.armPose!==undefined){
     const a=r.armPose;
-    if(!isObject(a)||!vector(a.rest,3,1)||!vector(a.pole,3,1)||!number(a.speed,.01,5)||!number(a.maxElbowDegrees,1,179)||!Array.isArray(a.poses))fail("runtime.armPose");
+    if(!isObject(a)||!vector(a.rest,3,1)||!vector(a.pole,3,1)||!number(a.speed,.01,5)||!number(a.maxElbowDegrees,1,179)||!Array.isArray(a.poses)||(a.restFingerCurl!==undefined&&!number(a.restFingerCurl,0,1)))fail("runtime.armPose");
     for(const [i,pose] of a.poses.entries()){
       if(!isObject(pose)||typeof pose.match!=="string"||!vector(pose.target,3,1))fail("runtime.armPose.poses["+i+"]");
       regex(pose.match,"runtime.armPose.poses["+i+"].match");
+      if(pose.palm!==undefined&&pose.palm!=="forward")fail("runtime.armPose.poses["+i+"].palm");
+      if(pose.fingerCurl!==undefined&&!number(pose.fingerCurl,0,1))fail("runtime.armPose.poses["+i+"].fingerCurl");
       if(pose.wave!==undefined&&(!isObject(pose.wave)||!number(pose.wave.amplitude,0,.5)||!number(pose.wave.frequency,0,20)))fail("runtime.armPose.poses["+i+"].wave");
     }
   }

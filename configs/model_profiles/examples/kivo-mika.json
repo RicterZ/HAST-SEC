@@ -21,7 +21,9 @@
           "wave": {
             "amplitude": 0.18,
             "frequency": 6
-          }
+          },
+          "palm": "forward",
+          "fingerCurl": 0.05
         },
         {
           "match": "举过|头部高度|向上",
@@ -29,7 +31,9 @@
             0.28,
             0.9,
             0.2
-          ]
+          ],
+          "palm": "forward",
+          "fingerCurl": 0.2
         },
         {
           "match": "向前",
