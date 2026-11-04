@@ -10,16 +10,6 @@ https://github.com/mrdoob/three.js
 https://github.com/pixiv/three-vrm
 许可文本: licenses/@pixiv-three-vrm.txt.
 
-Qwen3.5-0.8B: Qwen Team. Apache-2.0.
-https://huggingface.co/Qwen/Qwen3.5-0.8B
-文本量化文件从ggml-org/Qwen3.5-0.8B-GGUF固定版本取得, 不随源码仓库重复分发.
-许可文本: licenses/Qwen-LICENSE.txt.
-
-llama.cpp: Copyright (c) 2023-2026 The ggml authors. MIT.
-https://github.com/ggml-org/llama.cpp
-运行库由安装脚本从官方b11429版本获取, 不随源码仓库分发. CUDA版依赖的NVIDIA运行库遵循NVIDIA条款, 不适用本项目许可证.
-许可文本: licenses/llama-LICENSE.txt.
-
 默认示例角色: VRM1_Constraint_Twist_Sample, (c) 2022 pixiv Inc.
 https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample
 VRM Public License 1.0: https://vrm.dev/licenses/1.0/

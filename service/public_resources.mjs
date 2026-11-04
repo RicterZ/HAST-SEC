@@ -6,8 +6,7 @@ const execute=promisify(execFile);
 export async function resourceProbe(root,state){
  let storage=0;async function scan(path){for(const entry of await readdir(path,{withFileTypes:true})){const file=resolve(path,entry.name);if(entry.isDirectory())await scan(file);else storage+=(await stat(file)).size;}}
  await scan(resolve(root,'models'));
- const config=JSON.parse(await readFile(resolve(root,'configs/qwen_intent.json'),'utf8'));
- for(const path of [process.env.HAST_MODEL??config.model,'assets/avatar.vrm'])try{storage+=(await stat(resolve(root,path))).size;}catch{}
+ for(const path of ['assets/avatar.vrm'])try{storage+=(await stat(resolve(root,path))).size;}catch{}
  let cached=null,time=0,inflight=null;
  const measure=async()=>{
   const runtime=state();let rss=runtime.pid?null:0;

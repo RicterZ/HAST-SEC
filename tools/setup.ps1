@@ -1,7 +1,5 @@
-﻿param([switch]$Cuda)
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 Import-Module Microsoft.PowerShell.Utility
-Import-Module Microsoft.PowerShell.Archive
 $setupRoot = Split-Path -Parent $PSScriptRoot
 $resources = Get-Content -LiteralPath (Join-Path $setupRoot 'assets/resources.json') -Raw | ConvertFrom-Json
 function Get-Resource($resource) {
@@ -16,20 +14,6 @@ function Get-Resource($resource) {
     Move-Item -LiteralPath $partial -Destination $destination -Force
     return $destination
 }
-Get-Resource $resources.model | Out-Null
 $avatarPath = Join-Path $setupRoot 'assets/avatar.vrm'
 if (-not (Test-Path -LiteralPath $avatarPath)) { Get-Resource $resources.avatar | Out-Null }
-$selected = if ($Cuda) { $resources.cuda } else { $resources.cpu }
-$archive = Get-Resource $selected
-$runtimePath = Join-Path $setupRoot 'runtime'
-New-Item -ItemType Directory -Path $runtimePath -Force | Out-Null
-Expand-Archive -LiteralPath $archive -DestinationPath $runtimePath -Force
-if ($Cuda) { $cudaArchive = Get-Resource $resources.cudart; Expand-Archive -LiteralPath $cudaArchive -DestinationPath $runtimePath -Force }
-$settingsPath = Join-Path $setupRoot 'configs/qwen_intent.json'
-$settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
-$settings.device = if ($Cuda) { 'CUDA0' } else { 'CPU' }
-$settings.gpu_layers = if ($Cuda) { 99 } else { 0 }
-[IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
-Remove-Item -LiteralPath $archive
-if ($Cuda) { Remove-Item -LiteralPath $cudaArchive }
 Write-Host '运行资源安装完成. 使用npm start启动.'

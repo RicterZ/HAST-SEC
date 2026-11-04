@@ -1,91 +1,73 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {qwenIntent} from '../service/qwen_intent.mjs';
+import {deepseekAgent,compileTools,presentationOf,validateContext} from '../service/deepseek.mjs';
 import {validateResult} from '../service/motion_result.mjs';
-const env={HAST_LLM_PROVIDER:'deepseek',DEEPSEEK_API_KEY:'test-secret'};
-const base={change:false,name:'保持',motion:0,rest:true};
-const command={reply:'好的',operation:'command',base,intents:[{side:'右',part:'手臂',hand:'默认',action:'上抬',height:'默认',幅度:1,速度:1,hold:2,delay:0}]};
-const dialogue={reply:'你好呀',expression:'happy',gesture:'none',engagement:'brief'};
-const response=(value,finish_reason='stop')=>Response.json({choices:[{finish_reason,message:{content:typeof value==='string'?value:JSON.stringify(value)}}],usage:{total_tokens:42}});
-function fixture(replies,extra={}){
+const keys=['right-向前移动','left-向前移动','right-抬腿','left-抬腿','right-向上举过头部','left-向上举过头部','right-挥手打招呼','left-挥手打招呼'];
+const classes=keys.map(key=>({key}));
+const call=(name,args,id='c'+Math.random())=>({id,type:'function',function:{name,arguments:JSON.stringify(args)}});
+const response=(message,finish=message.tool_calls?'tool_calls':'stop')=>({ok:true,status:200,json:async()=>({choices:[{finish_reason:finish,message:{role:'assistant',content:'',...message}}],usage:{}})});
+function fixture(replies,env={DEEPSEEK_API_KEY:'sk-test'}){
  const calls=[];
- const model=qwenIntent('/no-local-model-or-config',[],{env,...extra,fetch:async(url,options)=>{calls.push({url,...options,body:JSON.parse(options.body)});return replies.shift();}});
- return {model,calls};
+ const fetch=async(url,init)=>{calls.push({url,body:JSON.parse(init.body),signal:init.signal});const next=replies.shift();if(typeof next==='function')return next(init);return next;};
+ return {model:deepseekAgent(classes,{env,fetch}),calls};
 }
-test('DeepSeek warms without a paid request, compiles a command and reports its provider',async()=>{
- const {model,calls}=fixture([response(command)]);
- try{
-  const state=await model.warm('test');assert.equal(state.provider,'deepseek');assert.equal(state.ready,true);assert.equal(state.pid,null);assert.equal(calls.length,0);
-  const result=await model.plan('举起右手',[],'test','v15');
-  validateResult(result,[{key:'right-向上抬高'}]);assert.equal(result.model,'deepseek-flash');assert.equal(result.usage.total_tokens,42);
-  assert.equal(calls[0].url,'https://api.deepseek.com/chat/completions');assert.equal(calls[0].redirect,'error');
-  assert.equal(calls[0].headers.authorization,'Bearer test-secret');assert.equal(calls[0].body.model,'deepseek-flash');
-  assert.deepEqual(calls[0].body.response_format,{type:'json_object'});
-  assert.deepEqual(calls[0].body.thinking,{type:'disabled'});
-  for(const key of ['id_slot','seed','cache_prompt','chat_template_kwargs'])assert.equal(key in calls[0].body,false);
-  assert.match(calls[0].body.messages[0].content,/JSON Schema/);assert.ok(!JSON.stringify(state).includes('test-secret'));
- }finally{await model.shutdown();}
+test('chat replies are assistant text and history keeps the user/assistant layout',async()=>{
+ const {model,calls}=fixture([response({content:'你好呀! 😊'})]);
+ const context=[{role:'user',content:'讲个故事'},{role:'assistant',content:'从前有盏灯.'}];
+ const result=await model.plan('后来呢',context);validateResult(result,classes);
+ assert.equal(result.operation,'chat');assert.equal(result.reply,'你好呀! 😊');assert.equal(result.presentation.expression,'happy');
+ const {messages,tools,thinking}=calls[0].body;
+ assert.equal(messages[0].role,'system');assert.deepEqual(messages.slice(1),[...context,{role:'user',content:'后来呢'}]);
+ assert.deepEqual(tools.map(t=>t.function.name),['perform_actions','release','set_posture']);assert.deepEqual(thinking,{type:'disabled'});
+ assert.equal(calls[0].body.response_format,undefined);
 });
-test('DeepSeek chat and proactive chat retain dialogue presentation and context',async()=>{
- const {model,calls}=fixture([response({...command,operation:'chat',intents:[]}),response(dialogue),response(dialogue)],{env:{...env,DEEPSEEK_MODEL:'deepseek-flash'}});
- const context=[{role:'user',content:'我叫小明'}];
- try{
-  const result=await model.plan('你好',context,'test','v15');validateResult(result,[]);assert.equal(result.presentation.expression,'happy');
-  assert.ok(calls[1].body.messages.some(m=>m.content==='我叫小明'));
-  const proactive=await model.proactive(context,'test');validateResult(proactive,[]);assert.equal(proactive.proactive,true);
- }finally{await model.shutdown();}
+test('tool call sequences compile into ordered steps with hand shapes',async()=>{
+ const actions=[{part:'手臂',side:'左',action:'前伸',hand:'握拳',速度:2,hold:.3},{part:'手臂',side:'右',action:'前伸',hand:'握拳',速度:2,hold:.3},{part:'腿',side:'右',action:'上抬',速度:2,hold:.3,同时:true},{part:'手臂',side:'双',action:'上抬',height:'高于头顶'}];
+ const {model}=fixture([response({tool_calls:[call('perform_actions',{actions})]})]);
+ const result=await model.plan('左拳右拳同时踢腿然后欢呼',[]);validateResult(result,classes);
+ assert.equal(result.operation,'command');assert.equal(result.timing,'依次');assert.equal(result.reply,'');
+ assert.deepEqual(result.intents.map(i=>[i.key,i.step,i.speed]),[['left-向前移动',0,2],['right-向前移动',1,2],['right-抬腿',1,2],['left-向上举过头部',2,1],['right-向上举过头部',2,1]]);
+ assert.deepEqual(result.hands,[{side:'left',curl:1,step:0,hold:.3,motion:true},{side:'right',curl:1,step:1,hold:.3,motion:true}]);
+ assert.equal(result.summary,'左侧握拳向前移动, 右侧握拳向前移动, 右侧抬腿, 双侧向上举过头部');
+ const [assistant,tool]=result.memory;assert.equal(assistant.role,'assistant');assert.equal(assistant.tool_calls[0].function.name,'perform_actions');
+ assert.deepEqual(tool,{role:'tool',tool_call_id:assistant.tool_calls[0].id,content:'已执行.'});
+ validateContext([{role:'user',content:'x'},...result.memory]);
 });
-const reportedContext=[{role:'user',content:'你好'},{role:'assistant',content:'你好呀, 今天想聊点什么? 😊✨'},{role:'user',content:'笑一个'},{role:'assistant',content:'嘿嘿, 给你一个灿烂的笑脸! 😄✨'}];
-test('DeepSeek retries an empty JSON plan or dialogue once with the reported history intact',async()=>{
- const chatPlan={...command,operation:'chat',intents:[]};
- for(const emptyStage of ['plan','chat']){
-  const replies=emptyStage==='plan'?[response(''),response(chatPlan),response(dialogue)]:[response(chatPlan),response('  \n'),response(dialogue)];
-  const {model,calls}=fixture(replies);
-  try{
-   const result=await model.plan('你好',reportedContext,'7092cd5e-de79-4431-928d-c00bb5a2a5a5','v15');
-   validateResult(result,[]);assert.equal(result.operation,'chat');assert.equal(calls.length,3);
-   const initial=calls[emptyStage==='plan'?0:1],retry=calls[emptyStage==='plan'?1:2];
-   assert.equal(retry.body.max_tokens,1024);assert.equal(retry.signal,initial.signal);
-   assert.equal(retry.body.messages.filter(m=>m.role==='system').length,1);
-   assert.match(retry.body.messages[0].content,/上次响应为空/);
-   assert.deepEqual(retry.body.messages.slice(1),initial.body.messages.slice(1));
-   assert.deepEqual(retry.body.messages.slice(-5,-1),reportedContext);
-   assert.deepEqual(retry.body.messages.at(-1),{role:'user',content:'你好'});
-  }finally{await model.shutdown();}
- }
+test('hand-only, release and posture tools',()=>{
+ const fist=compileTools([call('perform_actions',{actions:[{part:'手臂',side:'双',action:'保持不动',hand:'握拳'}]})]);
+ assert.deepEqual(fist.intents,[]);assert.equal(fist.hands.length,2);assert.equal(fist.operation,'command');
+ assert.equal(compileTools([call('release',{})]).operation,'release');
+ const still=compileTools([call('set_posture',{mode:'静止'})]);assert.equal(still.base.rest,true);assert.equal(still.operation,'command');
+ assert.equal(compileTools([]).operation,'chat');
+ assert.equal(presentationOf('讲一个很长的故事'.repeat(8)).engagement,'conversation');
 });
-test('DeepSeek stops after two empty responses and identifies the failed stage',async()=>{
- for(const phase of ['动作理解','对话生成']){
-  const replies=phase==='动作理解'?[response(''),Response.json({choices:[{finish_reason:'stop',message:{content:null}}]})]:[response({...command,operation:'chat',intents:[]}),response(''),response('')];
-  const {model,calls}=fixture(replies);
-  try{
-   await assert.rejects(model.plan('你好',reportedContext,'test','v15'),new RegExp(phase+'.*已重试一次'));
-   assert.equal(calls.length,phase==='动作理解'?2:3);assert.equal(model.state().busy,false);
-  }finally{await model.shutdown();}
- }
+test('invalid tool arguments are returned to the model once, then rejected',async()=>{
+ const bad=call('perform_actions',{actions:[{part:'腿',side:'右',action:'前伸'}]},'bad');
+ const good=call('perform_actions',{actions:[{part:'腿',side:'右',action:'上抬'}]});
+ let {model,calls}=fixture([response({tool_calls:[bad]}),response({content:'好的! ✨',tool_calls:[good]})]);
+ const result=await model.plan('踢一下',[]);assert.deepEqual(result.intents.map(i=>i.key),['right-抬腿']);assert.equal(result.reply,'好的! ✨');
+ const retry=calls[1].body.messages;assert.equal(retry.at(-2).tool_calls[0].id,'bad');assert.equal(retry.at(-1).role,'tool');assert.match(retry.at(-1).content,/腿只支持上抬/);
+ ({model}=fixture([response({tool_calls:[bad]}),response({tool_calls:[bad]})]));
+ await assert.rejects(model.plan('踢一下',[]),/动作参数无效/);
+ ({model}=fixture([response({tool_calls:[call('perform_actions',{actions:[{part:'手臂',side:'右',action:'摆臂'}]})]}),response({tool_calls:[call('perform_actions',{actions:[{part:'手臂',side:'右',action:'摆臂',extra:1}]})]})]));
+ await assert.rejects(model.plan('摆臂',[]),/动作参数无效/);
 });
-test('DeepSeek rejects invalid JSON, schema violations, truncated output and unsafe motions',async()=>{
- for(const raw of [response('broken'),response({...command,base:null}),response({...command,intents:[{...command.intents[0],side:'别的'}]}),response(command,'length')]){
-  const {model,calls}=fixture([raw]);try{await assert.rejects(model.plan('抬手',[],'test','v15'),/校验|完整/);assert.equal(calls.length,1);}finally{await model.shutdown();}
- }
- const {model}=fixture([response({...command,intents:[{...command.intents[0],速度:999}]})]);
- try{const result=await model.plan('抬手',[],'test','v15');assert.throws(()=>validateResult(result,[{key:'right-向上抬高'}]),/检查/);}finally{await model.shutdown();}
+test('empty chat, truncation and upstream errors stay actionable without echoing secrets',async()=>{
+ let {model}=fixture([response({content:'   '})]);await assert.rejects(model.plan('你好',[]),/没有给出回复/);
+ ({model}=fixture([response({content:'{"reply"'},'length')]));await assert.rejects(model.plan('你好',[]),/未完整结束/);
+ ({model}=fixture([{ok:false,status:401,json:async()=>({})}]));await assert.rejects(model.plan('你好',[]),e=>/401/.test(e.message)&&!e.message.includes('sk-test'));
+ ({model}=fixture([],{}));await assert.rejects(model.warm('s'),/DEEPSEEK_API_KEY/);
 });
-test('DeepSeek configuration and upstream errors stay actionable without echoing secrets',async()=>{
- const missing=qwenIntent('/missing',[],{env:{HAST_LLM_PROVIDER:'deepseek'}});
- try{await assert.rejects(missing.warm('test'),/DEEPSEEK_API_KEY/);}finally{await missing.shutdown();}
- for(const status of [401,402,429,500]){
-  const {model}=fixture([Response.json({error:{message:'test-secret'}},{status})]);
-  try{await assert.rejects(model.plan('你好'),error=>error.message.includes(String(status))&&!error.message.includes('test-secret'));}finally{await model.shutdown();}
- }
- assert.throws(()=>qwenIntent('/missing',[],{env:{HAST_LLM_PROVIDER:'typo'}}),/HAST_LLM_PROVIDER/);
+test('proactive chat sends no tools and cancellation releases the busy state',async()=>{
+ let {model,calls}=fixture([response({content:'想聊点什么呀? 🙂'})]);
+ const proactive=await model.proactive([],'s');validateResult(proactive,classes);assert.equal(calls[0].body.tools,undefined);assert.equal(proactive.proactive,true);
+ ({model}=fixture([init=>new Promise((_,reject)=>init.signal.addEventListener('abort',()=>reject(init.signal.reason)))]));
+ const pending=model.plan('你好',[],'s');await new Promise(r=>setTimeout(r,5));
+ assert.equal(model.state().busy,true);assert.equal(await model.cancel('s'),true);await assert.rejects(pending);assert.equal(model.state().busy,false);
 });
-test('DeepSeek cancellation aborts the request and releases the busy state',async()=>{
- let started;const waiting=new Promise(resolve=>started=resolve);
- const model=qwenIntent('/missing',[],{env,fetch:async(url,{signal})=>{started();return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}});
- try{
-  const result=model.plan('你好',[],'owner','v15');const rejected=assert.rejects(result,{name:'AbortError'});await waiting;
-  assert.equal(await model.cancel('another',true),false);assert.equal(model.state().busy,true);
-  await model.cancel('owner',true);await rejected;assert.equal(model.state().busy,false);assert.equal(model.state().ready,false);
- }finally{await model.shutdown();}
+test('context accepts user/assistant text and complete tool turns only',()=>{
+ const c=call('release',{},'r1'),turn=[{role:'user',content:'放下'},{role:'assistant',content:'',tool_calls:[c]},{role:'tool',tool_call_id:'r1',content:'已执行.'}];
+ validateContext(turn);validateContext([{role:'user',content:'你好'},{role:'assistant',content:'你好呀'}]);
+ for(const bad of [turn.slice(0,2),[turn[2]],[{role:'system',content:'x'}],[{role:'assistant',content:'',tool_calls:[call('rm_rf',{},'x')]},{role:'tool',tool_call_id:'x',content:''}],[{role:'user',content:'x',extra:1}],[{role:'user',content:'x'.repeat(601)}]])
+  assert.throws(()=>validateContext(bad),/聊天历史格式无效/);
 });

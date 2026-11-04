@@ -59,21 +59,11 @@ cd HAST-SEC
 npm ci
 ```
 
-然后选择一种运行资源安装方式. 没有兼容NVIDIA显卡时使用CPU方式:
+然后安装运行资源 (公开示例角色), 并在启动服务的终端设置 DeepSeek API Key (见下文"DeepSeek 对话与动作"):
 
 ```powershell
 npm run setup
-```
-
-有兼容NVIDIA显卡及可用驱动时, 推荐使用显卡加速方式:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/setup.ps1 -Cuda
-```
-
-安装脚本会取得固定版本的语言权重、推理运行库和公开示例角色, 并校验文件. CPU与显卡方式无需同时安装. 安装完成后启动:
-
-```powershell
+$env:DEEPSEEK_API_KEY='你的 API Key'
 npm start
 ```
 
@@ -81,15 +71,16 @@ npm start
 
 ## 页面操作
 
-页面默认暂停. 点击"开始或继续"后观察角色, 在底部聊天框输入消息并发送. 点击"暂停"停止回放并释放本程序启动的语言推理进程; "重置并暂停"回到初始状态. 终端中按Ctrl+C退出服务.
+页面默认暂停. 点击"开始或继续"后观察角色, 在底部聊天框输入消息并发送. 点击"暂停"停止回放; "重置并暂停"回到初始状态. 终端中按Ctrl+C退出服务.
 
-首次开始或聚焦聊天框时会加载和预热语言模型, 首条消息可能较慢. CPU响应通常明显慢于显卡加速. 输入一条指令后, 等待理解与动作结束再继续, 便于区分当前动作与下一条指令.
+输入一条指令后, 等待理解与动作结束再继续, 便于区分当前动作与下一条指令.
 
 | 用途 | 可尝试的消息 |
 |---|---|
 | 日常聊天 | 你好、你今天怎么样、讲一个简短的故事 |
 | 手臂动作 | 挥挥左手、把右手举高 |
 | 腿部动作 | 抬起右腿 |
+| 组合与序列 | 出拳、踢腿、握拳、先挥左手再举右手 |
 
 实时图表只保留最近15秒. 资源仪表显示内存和文件占用, 不是显存仪表. 暂停、首次加载、角色不同及硬件不同都可能影响显示结果.
 
@@ -132,17 +123,16 @@ npm run check
 | 下载中断或校验失败 | 检查网络后重新执行安装命令, 已校验资源会跳过; 官方下载地址与目标位置见assets/resources.json |
 | 页面无法连接 | 保持启动终端打开, 查看启动报错及实际地址 |
 | 8769端口已占用 | 关闭自己之前启动的同一服务, 或在启动前设置$env:PORT='8779' |
-| 中文推理端口已占用 | 启动前设置$env:HAST_LLM_PORT='8784', 再执行npm start |
-| 中文回复很慢 | 等待首次加载完成, 核对是否使用CPU方式; 兼容NVIDIA显卡可改用-Cuda安装方式 |
+| 提示需要设置 DEEPSEEK_API_KEY 或返回401 | 在启动服务的终端设置有效的DEEPSEEK_API_KEY后重启 |
 | 角色加载失败或动作变形 | 使用完整骨骼的兼容VRM, 核对角色许可与骨架; 任意角色的重定向效果不作保证 |
 
 ## 文件与反馈
 
 web为展示页面, service为本地服务, models和configs为配套运行资源与配置, tools提供安装、角色导入和检查工具. 其余目录包含骨骼、手部、表情及运行时处理代码; training目录中的文件是本版运行依赖, 不代表附带完整训练流程.
 
-不需要外部API密钥. 安装资源需要联网, 中文推理在本机完成. 本版提供源码和运行资源, 不包含原始训练视频、私人配置、完整历史实验和原演示角色. 不用于机器人实体控制或其他安全关键场景.
+对话与动作理解使用 DeepSeek API, 需要联网和 API 密钥. 本版提供源码和运行资源, 不包含原始训练视频、私人配置、完整历史实验和原演示角色. 不用于机器人实体控制或其他安全关键场景.
 
-问题请提交到[仓库议题](https://github.com/sola1039/HAST-SEC/issues), 附上系统、显卡、CPU或显卡运行方式、报错文字及复现步骤. 不要公开密码、访问令牌或无权分发的角色文件.
+问题请提交到[仓库议题](https://github.com/sola1039/HAST-SEC/issues), 附上系统、报错文字及复现步骤. 不要公开密码、访问令牌或无权分发的角色文件.
 
 ## 许可
 
@@ -169,16 +159,15 @@ npm start
 
 在其他设备打开 `http://<运行电脑的局域网 IP>:8769/language-lab`；`0.0.0.0` 是监听地址，不能作为其他设备访问的目标地址。端口仍可通过 `PORT` 设置，也可将 `HOST` 设为某个具体的本机 IP。恢复默认时取消设置 `HOST`。
 
-允许的 Host 包括本机地址；通配监听时还包括启动时检测到的网卡 IP。同源检查仍启用，不允许任意域名或跨站页面调用 API；网络地址变化后需重启服务。不提供登录认证，因此请仅在可信局域网开放，勿直接暴露到公网。语言推理使用服务端选择的后端。
+允许的 Host 包括本机地址；通配监听时还包括启动时检测到的网卡 IP。同源检查仍启用，不允许任意域名或跨站页面调用 API；网络地址变化后需重启服务。不提供登录认证，因此请仅在可信局域网开放，勿直接暴露到公网。语言理解由服务端调用 DeepSeek。
 
 局域网 HTTP 地址不属于浏览器安全上下文，通常没有 `crypto.subtle` 和 `crypto.randomUUID`。前端已提供 SHA-256 校验的 JavaScript 回退，并使用 HTTP 下仍可用的 `crypto.getRandomValues` 生成会话 UUID；不会跳过模型或技能资源摘要校验。localhost/HTTPS 下仍优先使用原生 Web Crypto。若旧版本通过 IP 打开后只显示空白角色区域，请更新代码、重启服务并强制刷新页面，无需关闭浏览器安全设置。
 
-## DeepSeek 文字理解与对话
+## DeepSeek 对话与动作
 
-默认仍使用本地 Qwen3.5-0.8B。要改为 DeepSeek API，在启动服务的终端设置环境变量：
+对话与动作理解只使用 DeepSeek API。在启动服务的终端设置环境变量：
 
 ```sh
-export HAST_LLM_PROVIDER=deepseek
 export DEEPSEEK_API_KEY='你的 API Key'
 # 可选，默认 deepseek-flash
 export DEEPSEEK_MODEL=deepseek-flash
@@ -188,16 +177,16 @@ npm start
 PowerShell：
 
 ```powershell
-$env:HAST_LLM_PROVIDER='deepseek'
 $env:DEEPSEEK_API_KEY='你的 API Key'
 $env:DEEPSEEK_MODEL='deepseek-flash'
 npm start
 ```
 
-可同时设置 `HOST=0.0.0.0` 供局域网访问。修改变量后重启服务。密钥只由 Node 服务端读取，不放进网页、模型 profile 或提交到仓库。服务端请求官方 `https://api.deepseek.com/chat/completions`，发送当前文字、最近对话和动作能力提示；按 DeepSeek 的 API 规则计费。预热只检查配置，不发送付费请求，页面显示「已配置」不代表已验证密钥或网络。
+密钥只由 Node 服务端读取，不放进网页、模型 profile 或提交到仓库。服务端请求官方 `https://api.deepseek.com/chat/completions`，按 DeepSeek 的 API 规则计费；页面显示「已配置」不代表已验证密钥或网络。
 
-API 模式不启动 llama-server，也不需要本地 Qwen GGUF；角色、动作模型和其他项目资源仍需保留。文字理解、聊天与主动对话都使用所选后端，角色 profile 和动作播放方式不变。API 返回 JSON 后先校验结构，再经过原有动作接口检查；失败、超时或取消时不执行新动作，也不自动切回本地模型。
+每条消息只发送一次请求，消息为系统提示 + 最近的 user/assistant 对话 + 当前消息：
 
-DeepSeek 的 JSON 模式偶尔返回空内容；遇到空响应时，服务端会在原请求超时预算内自动重试一次（可能增加一次 API 计费），保留对话历史并加强 JSON 输出提示。若仍为空，错误会标明「动作理解」或「对话生成」阶段。鉴权失败、无效 JSON 和截断回复不会自动重试。
-
-恢复本地模式：将 `HAST_LLM_PROVIDER` 设为 `qwen`（或取消该变量）后重启，使用原有 `configs/qwen_intent.json` 配置。`DEEPSEEK_MODEL` 可用于指定账户支持的其他 DeepSeek 聊天模型。请求显式关闭思考模式，避免短动作解析消耗长推理预算；使用 [JSON Output](https://api-docs.deepseek.com/guides/json_mode) 和 [thinking 参数](https://api-docs.deepseek.com/guides/thinking_mode) 的官方接口。
+- 聊天：assistant 的文本内容直接作为回复显示，表情按回复中的 emoji 选择。
+- 动作：模型通过[工具调用](https://api-docs.deepseek.com/guides/function_calling)给出，可附一句短回复。`perform_actions` 的 `actions` 是动作数组，按顺序依次执行，前一项结束后再开始下一项（`同时: true` 表示与上一项同时开始，`side: "双"` 表示两侧一起做）；`release` 放下当前动作，`set_posture` 切换静止或自然活动。动作轮次在对话历史中记为 `(已执行: ...)` 的 assistant 文本，避免下一轮重复执行。
+- 组合动作由已有能力拼出：出拳 = 手臂前伸 + 握拳 + 速度 2，踢腿 = 腿上抬 + 速度 2，`hand` 可设握拳或张开。
+- 工具参数先按 JSON Schema 和动作库校验；不合法时把原因作为工具结果交回模型修正一次，仍不合法则不执行任何动作。失败、超时或取消时不执行新动作。请求显式关闭思考模式。

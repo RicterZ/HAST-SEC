@@ -7,7 +7,7 @@ export function lowLatency(session){
    for(let attempt=0;attempt<40;attempt++){
     owned.signal.throwIfAborted();
     const r=await fetch('/v13-api/warm',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session}),signal:owned.signal}),v=await r.json();if(!r.ok)throw Error(v.error);
-    if(v.runtime.ready&&!v.runtime.busy){output.textContent=v.runtime.provider==='deepseek'?'DeepSeek API 已配置 ('+v.runtime.model+'), 请求时连接.':'本地千问已就绪 ('+(v.runtime.device??'本机')+').';return v.runtime;}
+    if(v.runtime.ready&&!v.runtime.busy){output.textContent='DeepSeek API 已配置 ('+v.runtime.model+'), 请求时连接.';return v.runtime;}
     await new Promise(resolve=>setTimeout(resolve,250));
    }
    throw Error('文字理解服务准备超时, 请稍后重试.');
