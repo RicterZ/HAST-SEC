@@ -117,6 +117,12 @@
       }
     ],
     "armCollision": false,
+    "bodyYawLimitDegrees": 15,
+    "lookAtPointer": {
+      "maxYawDegrees": 55,
+      "maxPitchDegrees": 30,
+      "speed": 6
+    },
     "armPose": {
       "rest": [
         0.22,

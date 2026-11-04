@@ -21,6 +21,11 @@ function validateRuntime(r){
   if(r.attachments!==undefined){
     if(!Array.isArray(r.attachments)||!r.attachments.every(a=>isObject(a)&&typeof a.node==="string"&&a.node&&typeof a.bone==="string"&&a.bone))fail("runtime.attachments");
   }
+  if(r.bodyYawLimitDegrees!==undefined&&!number(r.bodyYawLimitDegrees,0,180))fail("runtime.bodyYawLimitDegrees");
+  if(r.lookAtPointer!==undefined){
+    const l=r.lookAtPointer;
+    if(!isObject(l)||!number(l.maxYawDegrees,0,90)||!number(l.maxPitchDegrees,0,60)||!number(l.speed,.1,50))fail("runtime.lookAtPointer");
+  }
   if(r.mouthAtlas!==undefined){
     const m=r.mouthAtlas,cell=c=>Array.isArray(c)&&c.length===2&&c.every(Number.isInteger)&&c[0]>=0&&c[1]>=0&&c[0]<m.grid[0]&&c[1]<m.grid[1];
     if(!isObject(m)||typeof m.material!=="string"||!m.material||!(Array.isArray(m.grid)&&m.grid.length===2&&m.grid.every(n=>Number.isInteger(n)&&n>0&&n<=64))||!vector(m.origin,2)||!cell(m.neutral)||!Array.isArray(m.rules))fail("runtime.mouthAtlas");

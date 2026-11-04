@@ -19,6 +19,9 @@ export function createViewer(container,{wheelZoom=true}={}) {
   controls.minDistance=.3;controls.maxDistance=9;
   const axes=new THREE.AxesHelper(.16);axes.material.depthTest=false;axes.renderOrder=10;scene.add(axes);
   let keyLight=null;
+  const pointer=new THREE.Vector2(),raycaster=new THREE.Raycaster();let pointerInside=false;
+  renderer.domElement.addEventListener("pointermove",event=>{const box=renderer.domElement.getBoundingClientRect();pointer.set((event.clientX-box.left)/box.width*2-1,-(event.clientY-box.top)/box.height*2+1);pointerInside=true;});
+  renderer.domElement.addEventListener("pointerleave",()=>{pointerInside=false;});
   let vrm,profile,graph,selected="head",lines,radius=3,pendingBox=null;
   const vector=new THREE.Vector3(),fullTarget=new THREE.Vector3();
   const yaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI);
@@ -68,6 +71,7 @@ export function createViewer(container,{wheelZoom=true}={}) {
   resize();
   return {
     scene, render, view, fitBounds,
+    pointerRay(){if(!pointerInside)return null;raycaster.setFromCamera(pointer,camera);return raycaster.ray.clone();},
     inspect(){return {target:controls.target.toArray(),camera:camera.position.toArray(),full_target:fullTarget.toArray(),head_screen:vrm?vrm.humanoid.getNormalizedBoneNode("head").getWorldPosition(new THREE.Vector3()).project(camera).toArray():null,wheel_zoom:controls.enableZoom};},
     attach(model, skeleton, binding) {
       vrm = model; profile = skeleton; graph = binding; scene.add(vrm.scene);
