@@ -1,7 +1,7 @@
 import {randomUUID} from './browser_crypto.mjs';
 import {motionName} from './v13_panels.mjs';
 const $=id=>document.getElementById(id);
-export function commandLoop({assets,policy,history,behavior,layers,hands,pose,play,speech,prepare,generation,dialogue}){
+export function commandLoop({assets,policy,history,behavior,layers,hands,pose,play,speech,prepare,generation,dialogue,setPosture,posture,seated}){
  const session=randomUUID();
  const sendLabel=$('send').textContent;
  let pending=null,revision=0,context=[],turns=[],lastPlan=null,selections=[],self=false,queue=[];
@@ -17,7 +17,9 @@ export function commandLoop({assets,policy,history,behavior,layers,hands,pose,pl
   if(pending&&!self){if(queue.length>=6){$('status').textContent='等待消息已满, 请稍后再发送.';return;}return new Promise(resolve=>{queue.push({text,resolve});$('status').textContent='已排队 '+queue.length+' 条消息, 当前动作继续.';});}
   const interrupted=self;if(interrupted)cancel();const ticket=++revision;pending=new AbortController();dialogue?.pending(true);$('send').disabled=false;$('send').textContent=sendLabel;$('status').textContent='正在理解你的消息...';
   try{if(interrupted){const r=await fetch('/v13-api/interrupt',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session}),signal:pending.signal});if(!r.ok)throw Error('自主聊天取消失败.');}if(ticket!==revision)return;await prepare();if(ticket!==revision)return;const response=await fetch('/v13-api/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text,context,session,...(generation==='v15'?{generation}:{})}),signal:pending.signal}),plan=await response.json();if(ticket!==revision)return;if(!response.ok)throw Error(plan.error);
+   if(((plan.posture??posture?.()??'standing')!=='standing'||seated?.())&&plan.intents.some(i=>i.key.endsWith('-抬腿')))throw Error('坐姿中请使用摆腿坐, 或等站起完成后再抬腿.');
    for(const i of plan.intents)await assets.load(assets.entries.get(i.key));if(ticket!==revision)return;
+   if(plan.posture)setPosture(plan.posture);
    if(plan.operation==='release'){layers.clear();hands?.clear();}selections=[];
    // 动作序列: 每一步在上一步所有轨道结束后开始, 时长取所选动作片段的实际长度.
    const steps=Math.max(0,...plan.intents.map(i=>i.step??0),...(plan.hands??[]).map(h=>h.step))+1,starts=[],ends=[];

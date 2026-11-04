@@ -11,6 +11,15 @@ export function targetsV9(rig,dynamics,contact,proposal,target,settings,handGoal
     const residual=[],hard=[],metrics={contacts:[]};
     hands.forEach((i,j)=>{const task=handGoal?.bone===rig.names[i],error=state.p[i].clone().sub(task?bodyWorldPoint(rig,state,handGoal.point,handGoal.reference):handTargets[j]);residual.push(...error.multiplyScalar(task?30:.6/.06).toArray());if(task)metrics.task_hand_error_cm=error.length()/30*100;});
     if(handGoal){const arm=armTask(rig,state,handGoal);residual.push(...arm.residual);hard.push(...arm.hard);Object.assign(metrics,arm.metrics);}
+    if(proposal.seat){
+      const seat=proposal.seat,error=state.p[0].clone().sub(seat.pelvis);
+      residual.push(...error.clone().multiplyScalar(60).toArray());hard.push(Math.max(0,error.length()/settings.contact_tolerance_m-1));
+      metrics.contacts.push({bone:'hips',active:true,slip_m:error.length(),support:seat.support});
+      for(const [i,name]of rig.names.entries())if(/Leg|Foot|Toes/.test(name)){
+        const penetration=Math.max(0,seat.floor-state.p[i].y);residual.push(penetration*100);hard.push(Math.max(0,penetration/.002-1));
+      }
+      metrics.posture=seat.mode;metrics.support_kind=seat.transition?'support-transfer':seat.support;
+    }
     for(const f of proposal.rows){
       if(!f.active&&proposal.swingFoot===rig.names[f.index]&&proposal.footTarget)residual.push(...state.p[f.index].clone().sub(proposal.footTarget).multiplyScalar(18).toArray());
       const penetration=new Vector3(0,Math.min(0,state.p[f.index].y-f.floor),0),error=f.active?state.p[f.index].clone().sub(f.anchor):f.landing?state.p[f.index].clone().sub(f.landingTarget):penetration,angle=f.active||f.landing?rotationStep(f.orientation,state.q[f.index]):new Vector3();

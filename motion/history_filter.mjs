@@ -5,13 +5,13 @@ import {jointCoordinates,jointRotation} from './joint_coordinates.mjs';
 import {predictHistory} from '../training/history_ar.mjs';
 import {motionSpectrum} from './multiscale_motion.mjs';
 const alpha=(hz,dt)=>1/(1+1/(2*Math.PI*hz*dt));
-export function historyFilter(names,model,direction=1){
+export function historyFilter(names,model,direction=1,mode=()=> 'standing'){
   const states=names.map(()=>null),spectra=names.map(motionSpectrum);let reports=[];
   function reset(){states.fill(null);spectra.forEach(s=>s.reset());reports=[];}
   function limit(i,target,dt){
-    const prior=states[i];if(!prior)return projectJoint(names[i],target,0);if(dt===0)return prior.q.clone();
+    const prior=states[i];if(!prior)return projectJoint(names[i],target,0,mode());if(dt===0)return prior.q.clone();
     const max=jointPolicy(names[i]).speed*dt,a=jointCoordinates(names[i],prior.q),b=jointCoordinates(names[i],target);
-    const candidate=t=>projectJoint(names[i],names[i]==='hips'?prior.q.clone().slerp(target,t):jointRotation(names[i],a.clone().lerp(b,t)),0);
+    const candidate=t=>projectJoint(names[i],names[i]==='hips'?prior.q.clone().slerp(target,t):jointRotation(names[i],a.clone().lerp(b,t)),0,mode());
     let q=candidate(1);if(prior.q.angleTo(q)<=max)return q;
     let lo=0,hi=1;for(let k=0;k<18;k++){const t=(lo+hi)/2;if(prior.q.angleTo(candidate(t))<=max)lo=t;else hi=t;}
     return candidate(lo);

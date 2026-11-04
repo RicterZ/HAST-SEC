@@ -2,7 +2,7 @@ import {Vector3,Quaternion} from 'three';
 import {rotationExp,rotationLog} from './feasible_math.mjs';
 export function poseState(frame,controller,rootReference,faceNames){
   const delta=frame.root??[0,0,0];if(delta.length!==3||delta.some(v=>!Number.isFinite(v)))throw Error('根位移格式无效.');
-  return {rotations:frame.rotations.map(q=>controller.adapt(q)),root:rootReference.clone().add(new Vector3(...controller.adapt(delta))).toArray(),expressions:frame.expressions??Object.fromEntries(faceNames.map((n,i)=>[n,frame.face?.[i]??(n==='aa'?frame.jaw??0:0)])),confidence:frame.confidence??null,faceConfidence:frame.faceConfidence??1,rootObserved:frame.rootObserved??false,rootConfidence:frame.rootConfidence??1,handGoal:frame.handGoal??null,swingFoot:frame.swingFoot??null};
+  return {rotations:frame.rotations.map(q=>controller.adapt(q)),root:rootReference.clone().add(new Vector3(...controller.adapt(delta))).toArray(),expressions:frame.expressions??Object.fromEntries(faceNames.map((n,i)=>[n,frame.face?.[i]??(n==='aa'?frame.jaw??0:0)])),confidence:frame.confidence??null,faceConfidence:frame.faceConfidence??1,rootObserved:frame.rootObserved??false,rootConfidence:frame.rootConfidence??1,handGoal:frame.handGoal??null,swingFoot:frame.swingFoot??null,posture:frame.posture??'standing'};
 }
 export function featureState(row,controller,meta,{root=null,rootObserved=false,confidence=null,rootReference}={}){
   const dim=meta.bones.length*3+meta.face.length;
