@@ -198,4 +198,6 @@ npm start
 
 API 模式不启动 llama-server，也不需要本地 Qwen GGUF；角色、动作模型和其他项目资源仍需保留。文字理解、聊天与主动对话都使用所选后端，角色 profile 和动作播放方式不变。API 返回 JSON 后先校验结构，再经过原有动作接口检查；失败、超时或取消时不执行新动作，也不自动切回本地模型。
 
+DeepSeek 的 JSON 模式偶尔返回空内容；遇到空响应时，服务端会在原请求超时预算内自动重试一次（可能增加一次 API 计费），保留对话历史并加强 JSON 输出提示。若仍为空，错误会标明「动作理解」或「对话生成」阶段。鉴权失败、无效 JSON 和截断回复不会自动重试。
+
 恢复本地模式：将 `HAST_LLM_PROVIDER` 设为 `qwen`（或取消该变量）后重启，使用原有 `configs/qwen_intent.json` 配置。`DEEPSEEK_MODEL` 可用于指定账户支持的其他 DeepSeek 聊天模型。请求显式关闭思考模式，避免短动作解析消耗长推理预算；使用 [JSON Output](https://api-docs.deepseek.com/guides/json_mode) 和 [thinking 参数](https://api-docs.deepseek.com/guides/thinking_mode) 的官方接口。

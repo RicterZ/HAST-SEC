@@ -35,9 +35,38 @@ test('DeepSeek chat and proactive chat retain dialogue presentation and context'
   const proactive=await model.proactive(context,'test');validateResult(proactive,[]);assert.equal(proactive.proactive,true);
  }finally{await model.shutdown();}
 });
+const reportedContext=[{role:'user',content:'你好'},{role:'assistant',content:'你好呀, 今天想聊点什么? 😊✨'},{role:'user',content:'笑一个'},{role:'assistant',content:'嘿嘿, 给你一个灿烂的笑脸! 😄✨'}];
+test('DeepSeek retries an empty JSON plan or dialogue once with the reported history intact',async()=>{
+ const chatPlan={...command,operation:'chat',intents:[]};
+ for(const emptyStage of ['plan','chat']){
+  const replies=emptyStage==='plan'?[response(''),response(chatPlan),response(dialogue)]:[response(chatPlan),response('  \n'),response(dialogue)];
+  const {model,calls}=fixture(replies);
+  try{
+   const result=await model.plan('你好',reportedContext,'7092cd5e-de79-4431-928d-c00bb5a2a5a5','v15');
+   validateResult(result,[]);assert.equal(result.operation,'chat');assert.equal(calls.length,3);
+   const initial=calls[emptyStage==='plan'?0:1],retry=calls[emptyStage==='plan'?1:2];
+   assert.equal(retry.body.max_tokens,1024);assert.equal(retry.signal,initial.signal);
+   assert.equal(retry.body.messages.filter(m=>m.role==='system').length,1);
+   assert.match(retry.body.messages[0].content,/上次响应为空/);
+   assert.deepEqual(retry.body.messages.slice(1),initial.body.messages.slice(1));
+   assert.deepEqual(retry.body.messages.slice(-5,-1),reportedContext);
+   assert.deepEqual(retry.body.messages.at(-1),{role:'user',content:'你好'});
+  }finally{await model.shutdown();}
+ }
+});
+test('DeepSeek stops after two empty responses and identifies the failed stage',async()=>{
+ for(const phase of ['动作理解','对话生成']){
+  const replies=phase==='动作理解'?[response(''),Response.json({choices:[{finish_reason:'stop',message:{content:null}}]})]:[response({...command,operation:'chat',intents:[]}),response(''),response('')];
+  const {model,calls}=fixture(replies);
+  try{
+   await assert.rejects(model.plan('你好',reportedContext,'test','v15'),new RegExp(phase+'.*已重试一次'));
+   assert.equal(calls.length,phase==='动作理解'?2:3);assert.equal(model.state().busy,false);
+  }finally{await model.shutdown();}
+ }
+});
 test('DeepSeek rejects invalid JSON, schema violations, truncated output and unsafe motions',async()=>{
  for(const raw of [response('broken'),response({...command,base:null}),response({...command,intents:[{...command.intents[0],side:'别的'}]}),response(command,'length')]){
-  const {model}=fixture([raw]);try{await assert.rejects(model.plan('抬手',[],'test','v15'),/校验|完整/);}finally{await model.shutdown();}
+  const {model,calls}=fixture([raw]);try{await assert.rejects(model.plan('抬手',[],'test','v15'),/校验|完整/);assert.equal(calls.length,1);}finally{await model.shutdown();}
  }
  const {model}=fixture([response({...command,intents:[{...command.intents[0],速度:999}]})]);
  try{const result=await model.plan('抬手',[],'test','v15');assert.throws(()=>validateResult(result,[{key:'right-向上抬高'}]),/检查/);}finally{await model.shutdown();}

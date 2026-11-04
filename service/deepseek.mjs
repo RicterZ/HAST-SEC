@@ -28,26 +28,39 @@ export function deepseek({env=process.env,fetch:send=globalThis.fetch}={}){
    configured();signal?.throwIfAborted();
    const {id_slot,seed,response_format,...body}=parameters;
    const schema=response_format?.json_schema?.schema;
+   const phase=response_format?.json_schema?.name==='motion_intent'?'动作理解':'对话生成';
    if(schema){
     body.response_format={type:'json_object'};
-    body.messages=[{role:'system',content:'Return valid JSON matching this JSON Schema: '+JSON.stringify(schema)},...body.messages];
+    const instructions=body.messages.filter(message=>message.role==='system').map(message=>message.content).join('\n');
+    body.messages=[{role:'system',content:instructions+'\n只输出一个完整的 JSON 对象，不要输出空内容、Markdown 或解释。Return valid JSON matching this JSON Schema: '+JSON.stringify(schema)},...body.messages.filter(message=>message.role!=='system')];
    }
-   let response;
-   try{response=await send('https://api.deepseek.com/chat/completions',{
-    method:'POST',redirect:'error',headers:{'content-type':'application/json',authorization:'Bearer '+key},
-    body:JSON.stringify({...body,model,thinking:{type:'disabled'}}),
-    signal:signal?AbortSignal.any([signal,AbortSignal.timeout(timeout)]):AbortSignal.timeout(timeout)
-   });}catch(error){if(signal?.aborted)throw signal.reason;if(error.name==='TimeoutError')throw Error('DeepSeek 请求超时, 请重试.');throw Error('无法连接 DeepSeek API, 请检查服务端网络.');}
-   if(!response.ok){
-    const hint={401:'请检查 DEEPSEEK_API_KEY',402:'账户余额不足',429:'请求过于频繁, 请稍后重试'}[response.status]??'请稍后重试';
-    throw Error('DeepSeek API 返回 '+response.status+': '+hint+'.');
+   const requestSignal=signal?AbortSignal.any([signal,AbortSignal.timeout(timeout)]):AbortSignal.timeout(timeout);
+   // DeepSeek documents occasional empty JSON responses; retry once within the same deadline.
+   for(let attempt=0;attempt<(schema?2:1);attempt++){
+    requestSignal.throwIfAborted();
+    let response;
+    try{response=await send('https://api.deepseek.com/chat/completions',{
+     method:'POST',redirect:'error',headers:{'content-type':'application/json',authorization:'Bearer '+key},
+     body:JSON.stringify({...body,model,thinking:{type:'disabled'}}),
+     signal:requestSignal
+    });}catch(error){if(signal?.aborted)throw signal.reason;if(error.name==='TimeoutError')throw Error('DeepSeek 请求超时, 请重试.');throw Error('无法连接 DeepSeek API, 请检查服务端网络.');}
+    if(!response.ok){
+     const hint={401:'请检查 DEEPSEEK_API_KEY',402:'账户余额不足',429:'请求过于频繁, 请稍后重试'}[response.status]??'请稍后重试';
+     throw Error('DeepSeek API 返回 '+response.status+': '+hint+'.');
+    }
+    const raw=await response.json();
+    if(raw.choices?.[0]?.finish_reason!=='stop')throw Error('DeepSeek 回复未完整结束, 没有执行动作.');
+    const content=raw.choices?.[0]?.message?.content;
+    if(typeof content!=='string'||!content.trim()){
+     if(schema&&attempt===0){
+      body.messages=[{...body.messages[0],content:body.messages[0].content+'\n上次响应为空。请根据最新用户消息，立即返回符合上述结构的非空 JSON 对象。'},...body.messages.slice(1)];
+      body.max_tokens=Math.max(body.max_tokens??0,1024);continue;
+     }
+     throw Error('DeepSeek '+phase+'回复为空'+(schema?'（已重试一次）':'')+', 请稍后重试.');
+    }
+    if(schema)try{validate(JSON.parse(content),schema);}catch{throw Error('DeepSeek JSON 输出未通过校验, 没有执行动作.');}
+    return raw;
    }
-   const raw=await response.json();
-   if(raw.choices?.[0]?.finish_reason!=='stop')throw Error('DeepSeek 回复未完整结束, 没有执行动作.');
-   const content=raw.choices?.[0]?.message?.content;
-   if(typeof content!=='string'||!content.trim())throw Error('DeepSeek 回复为空.');
-   if(schema)try{validate(JSON.parse(content),schema);}catch{throw Error('DeepSeek JSON 输出未通过校验, 没有执行动作.');}
-   return raw;
   }
  };
 }
